@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Analysis Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>GitHub Repository Analyzer</h1>
+            <a href="{{ url_for('index') }}">
+                <button type="button">New Analysis</button>
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="report-container">
+            <div class="report-header">
+                <h2>Analysis Report: {{ report.repository.url }}</h2>
+                <p>Analysis completed on {{ report.summary.analysis_timestamp }}</p>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="report-section">
+                <h3>Summary</h3>
+                
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <h4>Total Issues</h4>
+                        <p>{{ report.summary.total_issues }}</p>
+                    </div>
+                    <div class="summary-card" style="border-left-color: #e74c3c;">
+                        <h4>Errors</h4>
+                        <p>{{ report.summary.issue_counts.error }}</p>
+                    </div>
+                    <div class="summary-card" style="border-left-color: #f39c12;">
+                        <h4>Warnings</h4>
+                        <p>{{ report.summary.issue_counts.warning }}</p>
+                    </div>
+                    <div class="summary-card" style="border-left-color: #c0392b;">
+                        <h4>Security Issues</h4>
+                        <p>{{ report.summary.issue_counts.security }}</p>
+                    </div>
+                </div>
+
+                <h4>Git Information</h4>
+                <table class="issue-table">
+                    <tr>
+                        <th>Branch</th>
+                        <td>{{ report.repository.git_info.get('branch', 'Unknown') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Commit</th>
+                        <td>{{ report.repository.git_info.get('commit', 'Unknown') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Commit Date</th>
+                        <td>{{ report.repository.git_info.get('last_commit_date', 'Unknown') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Commit Count</th>
+                        <td>{{ report.repository.git_info.get('commit_count', 'Unknown') }}</td>
+                    </tr>
+                </table>
+                
+                <h4>Repository Contents</h4>
+                <table class="issue-table">
+                    <tr>
+                        <th>Total Files</th>
+                        <td>{{ report.summary.file_stats.total_files }}</td>
+                    </tr>
+                    <tr>
+                        <th>Total Directories</th>
+                        <td>{{ report.summary.file_stats.total_dirs }}</td>
+                    </tr>
+                </table>
+                
+                <h4>Languages</h4>
+                <div style="margin-top: 1rem; margin-bottom: 2rem;">
+                    <canvas id="languagesChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Issues Section -->
+            <div class="report-section">
+                <h3>Issues Found</h3>
+                
+                <!-- General Issues -->
+                <h4>General Issues</h4>
+                {% if report.issues.general_issues %}
+                    <table class="issue-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in report.issues.general_issues %}
+                                <tr>
+                                    <td>
+                                        <span class="issue-tag {{ issue.type }}">
+                                            {{ issue.type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ issue.message }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No general issues found.</p>
+                {% endif %}
+                
+                <!-- Security Issues -->
+                <h4>Security Issues</h4>
+                {% if report.issues.security_issues %}
+                    <table class="issue-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in report.issues.security_issues %}
+                                <tr>
+                                    <td>
+                                        <span class="issue-tag {{ issue.type }}">
+                                            {{ issue.type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ issue.message }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No security issues found.</p>
+                {% endif %}
+                
+                <!-- Best Practices -->
+                <h4>Best Practices</h4>
+                {% if report.issues.best_practices %}
+                    <table class="issue-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in report.issues.best_practices %}
+                                <tr>
+                                    <td>
+                                        <span class="issue-tag {{ issue.type }}">
+                                            {{ issue.type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ issue.message }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No best practice issues found.</p>
+                {% endif %}
+                
+                <!-- Language-specific Issues -->
+                <h4>Language-specific Issues</h4>
+                {% if report.issues.language_specific_issues %}
+                    {% for language, issues in report.issues.language_specific_issues.items() %}
+                        <h5>{{ language }}</h5>
+                        {% if issues %}
+                            <table class="issue-table">
+                                <thead>
+                                    <tr>
+                                        <th>File</th>
+                                        <th>Line</th>
+                                        <th>Type</th>
+                                        <th>Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for file_issue in issues %}
+                                        {% for issue in file_issue.issues %}
+                                            <tr>
+                                                <td>{{ file_issue.file }}</td>
+                                                <td>{{ issue.line if issue.line is defined else 'N/A' }}</td>
+                                                <td>
+                                                    <span class="issue-tag {{ issue.type }}">
+                                                        {{ issue.type }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ issue.message }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p>No issues found for {{ language }}.</p>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p>No language-specific issues found.</p>
+                {% endif %}
+            </div>
+
+            <!-- TODO Comments Section -->
+            <div class="report-section">
+                <h3>TODO Comments</h3>
+                {% if report.todo_comments %}
+                    <table class="issue-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Line</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for todo in report.todo_comments %}
+                                <tr>
+                                    <td>{{ todo.file }}</td>
+                                    <td>{{ todo.line }}</td>
+                                    <td>{{ todo.type }}</td>
+                                    <td>{{ todo.text }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No TODO comments found.</p>
+                {% endif %}
+            </div>
+
+            <!-- File Statistics Section -->
+            <div class="report-section">
+                <h3>File Statistics</h3>
+                
+                <h4>Largest Files</h4>
+                {% if report.summary.file_stats.largest_files %}
+                    <table class="issue-table">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in report.summary.file_stats.largest_files %}
+                                <tr>
+                                    <td>{{ file.path }}</td>
+                                    <td>{{ (file.size / 1024)|round(1) }} KB</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No file size information available.</p>
+                {% endif %}
+                
+                <h4>File Types</h4>
+                <table class="issue-table">
+                    <thead>
+                        <tr>
+                            <th>Extension</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ext, count in report.summary.file_stats.file_types.items() %}
+                            <tr>
+                                <td>{{ ext if ext else 'No extension' }}</td>
+                                <td>{{ count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; margin-top: 2rem; padding: 1rem; background-color: #f1f1f1;">
+        <div class="container">
+            <p>GitHub Repository Analyzer &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize any icons
+            feather.replace();
+            
+            // Languages chart
+            const languagesCtx = document.getElementById('languagesChart').getContext('2d');
+            
+            // Extract language data from the report
+            const languages = {{ report.summary.languages|tojson }};
+            const languageNames = Object.keys(languages);
+            const languageCounts = Object.values(languages);
+            
+            // Define colors for languages
+            const languageColors = [
+                '#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6',
+                '#1abc9c', '#d35400', '#34495e', '#16a085', '#27ae60',
+                '#2980b9', '#8e44ad', '#f1c40f', '#e67e22', '#95a5a6'
+            ];
+            
+            // Create the chart
+            new Chart(languagesCtx, {
+                type: 'pie',
+                data: {
+                    labels: languageNames,
+                    datasets: [{
+                        data: languageCounts,
+                        backgroundColor: languageColors.slice(0, languageNames.length),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Programming Languages'
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
