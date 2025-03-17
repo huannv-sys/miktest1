@@ -14,14 +14,15 @@
                 </div>
                 <div class="card-body">
                     <h4 class="text-center mb-4">Sign In</h4>
-                    <form method="POST" action="{{ url_for('auth_bp.login') }}">
+                    <div id="login-error-message" class="alert alert-danger d-none" role="alert"></div>
+                    <form id="login-form" method="POST" action="{{ url_for('auth_bp.login') }}">
                         {{ form.hidden_tag() }}
                         
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                {{ form.username(class="form-control", placeholder="Enter username") }}
+                                {{ form.username(class="form-control", placeholder="Enter username", id="username-input") }}
                             </div>
                             {% if form.username.errors %}
                                 <div class="invalid-feedback d-block">
@@ -36,7 +37,7 @@
                             <label for="password" class="form-label">Password</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                                {{ form.password(class="form-control", placeholder="Enter password") }}
+                                {{ form.password(class="form-control", placeholder="Enter password", id="password-input") }}
                             </div>
                             {% if form.password.errors %}
                                 <div class="invalid-feedback d-block">
@@ -48,7 +49,7 @@
                         </div>
                         
                         <div class="d-grid gap-2">
-                            {{ form.submit(class="btn btn-primary") }}
+                            {{ form.submit(class="btn btn-primary", id="login-button") }}
                         </div>
                     </form>
                 </div>
@@ -59,4 +60,85 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Client-side login handling
+    const loginForm = document.getElementById('login-form');
+    const loginButton = document.getElementById('login-button');
+    const errorMessage = document.getElementById('login-error-message');
+    
+    // Check for redirect after successful token refresh
+    const returnUrl = sessionStorage.getItem('returnUrl');
+    
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Disable button and show loading state
+        loginButton.disabled = true;
+        loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing in...';
+        errorMessage.classList.add('d-none');
+        
+        const username = document.getElementById('username-input').value;
+        const password = document.getElementById('password-input').value;
+        
+        try {
+            // Use fetchWithAuth if available, otherwise regular fetch
+            const fetchMethod = typeof fetchWithAuth === 'function' ? fetchWithAuth : fetch;
+            
+            // Try API login first for better token handling
+            const response = await fetchMethod('/auth/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                cache: false,
+                refreshOnUnauth: false // Don't try to refresh on login
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Save tokens
+                if (typeof tokenService !== 'undefined') {
+                    tokenService.setTokens(data.access_token, data.refresh_token);
+                    // Also set user data if available
+                    if (data.user) {
+                        tokenService.setUser(data.user);
+                    }
+                } else {
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('refresh_token', data.refresh_token);
+                }
+                
+                // Redirect to dashboard or stored return URL
+                window.location.href = returnUrl || '/';
+                // Clear return URL
+                sessionStorage.removeItem('returnUrl');
+            } else {
+                // Show error message
+                const errorData = await response.json();
+                errorMessage.textContent = errorData.error || 'Đăng nhập không thành công. Vui lòng kiểm tra tài khoản và mật khẩu.';
+                errorMessage.classList.remove('d-none');
+                
+                // Reset button
+                loginButton.disabled = false;
+                loginButton.textContent = 'Sign In';
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            errorMessage.textContent = 'Có lỗi kết nối. Vui lòng thử lại sau.';
+            errorMessage.classList.remove('d-none');
+            
+            // Reset button
+            loginButton.disabled = false;
+            loginButton.textContent = 'Sign In';
+        }
+    });
+});
+</script>
 {% endblock %}

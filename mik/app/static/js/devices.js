@@ -356,6 +356,20 @@ async function checkDeviceGridStatus(deviceId) {
 async function saveDevice() {
     const form = document.getElementById('addDeviceForm');
     
+    // Verify authentication first
+    if (!isAuthenticated || (typeof isAuthenticated === 'function' && !isAuthenticated())) {
+        showError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        
+        // Store current page for return after login
+        if (typeof redirectToLogin === 'function') {
+            redirectToLogin();
+        } else {
+            // Fallback redirect
+            window.location.href = '/auth/login';
+        }
+        return;
+    }
+    
     // Check form validity
     if (!form.checkValidity()) {
         form.reportValidity();
@@ -368,42 +382,88 @@ async function saveDevice() {
         ip_address: document.getElementById('deviceIp').value,
         username: document.getElementById('deviceUsername').value,
         password: document.getElementById('devicePassword').value,
-        model: document.getElementById('deviceModel').value,
-        location: document.getElementById('deviceLocation').value,
-        notes: document.getElementById('deviceNotes').value
+        model: document.getElementById('deviceModel').value || '',
+        location: document.getElementById('deviceLocation').value || '',
+        notes: document.getElementById('deviceNotes').value || ''
     };
+    
+    // Validate required fields
+    const requiredFields = ['name', 'ip_address', 'username', 'password'];
+    for (const field of requiredFields) {
+        if (!deviceData[field]) {
+            showError(`Trường ${field} là bắt buộc`);
+            return;
+        }
+    }
     
     // Disable save button
     const saveBtn = document.getElementById('saveDeviceBtn');
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang lưu...';
     
-    // Create device
-    const response = await apiClient.createDevice(deviceData);
-    
-    // Re-enable save button
-    saveBtn.disabled = false;
-    saveBtn.innerHTML = 'Save Device';
-    
-    // Check for error response
-    if (response && response.error) {
-        console.error('Error saving device:', response.error);
-        showError(response.error || 'Error adding device. Please try again.');
-        return;
+    try {
+        // Create device
+        const response = await apiClient.createDevice(deviceData);
+        
+        // Re-enable save button
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'Lưu thiết bị';
+        
+        // Handle unauthorized (try token refresh)
+        if (response && response.status === 401) {
+            console.log('Đang làm mới token...');
+            
+            // Try to refresh token if function exists
+            if (typeof refreshToken === 'function') {
+                const refreshed = await refreshToken(1);
+                
+                if (refreshed) {
+                    // Token refresh successful, retry save
+                    console.log('Làm mới token thành công, thử lại...');
+                    saveDevice(); // Call function again
+                    return;
+                } else {
+                    // Token refresh failed, redirect to login
+                    console.log('Làm mới token thất bại, chuyển hướng đến trang đăng nhập...');
+                    if (typeof redirectToLogin === 'function') {
+                        redirectToLogin();
+                    } else {
+                        window.location.href = '/auth/login';
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // Check for other error response
+        if (response && response.error) {
+            console.error('Lỗi khi lưu thiết bị:', response.error);
+            showError(response.error || 'Lỗi khi thêm thiết bị. Vui lòng thử lại.');
+            return;
+        }
+        
+        // Handle success
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addDeviceModal'));
+        if (modal) modal.hide();
+        
+        // Show success message
+        showSuccess('Thêm thiết bị thành công');
+        
+        // Reset form
+        form.reset();
+        
+        // Reload devices
+        loadDevices();
+    } catch (error) {
+        console.error('Lỗi khi lưu thiết bị:', error);
+        
+        // Re-enable save button
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'Lưu thiết bị';
+        
+        // Show error
+        showError('Có lỗi xảy ra khi lưu thiết bị. Vui lòng thử lại.');
     }
-    
-    // Handle success
-    const modal = bootstrap.Modal.getInstance(document.getElementById('addDeviceModal'));
-    if (modal) modal.hide();
-    
-    // Show success message
-    showSuccess('Device added successfully');
-    
-    // Reset form
-    form.reset();
-    
-    // Reload devices
-    loadDevices();
 }
 
 /**
@@ -444,6 +504,20 @@ async function showEditDeviceModal(deviceId) {
 async function updateDevice() {
     const form = document.getElementById('editDeviceForm');
     
+    // Verify authentication first
+    if (!isAuthenticated || (typeof isAuthenticated === 'function' && !isAuthenticated())) {
+        showError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        
+        // Store current page for return after login
+        if (typeof redirectToLogin === 'function') {
+            redirectToLogin();
+        } else {
+            // Fallback redirect
+            window.location.href = '/auth/login';
+        }
+        return;
+    }
+    
     // Check form validity
     if (!form.checkValidity()) {
         form.reportValidity();
@@ -457,9 +531,9 @@ async function updateDevice() {
         name: document.getElementById('editDeviceName').value,
         ip_address: document.getElementById('editDeviceIp').value,
         username: document.getElementById('editDeviceUsername').value,
-        model: document.getElementById('editDeviceModel').value,
-        location: document.getElementById('editDeviceLocation').value,
-        notes: document.getElementById('editDeviceNotes').value
+        model: document.getElementById('editDeviceModel').value || '',
+        location: document.getElementById('editDeviceLocation').value || '',
+        notes: document.getElementById('editDeviceNotes').value || ''
     };
     
     // Add password only if provided (not empty)
@@ -468,32 +542,68 @@ async function updateDevice() {
         deviceData.password = password;
     }
     
+    // Disable update button
+    const updateBtn = document.getElementById('updateDeviceBtn');
+    updateBtn.disabled = true;
+    updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang cập nhật...';
+    
     try {
-        // Disable update button
-        const updateBtn = document.getElementById('updateDeviceBtn');
-        updateBtn.disabled = true;
-        updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
-        
         // Update device
-        await apiClient.updateDevice(deviceId, deviceData);
+        const response = await apiClient.updateDevice(deviceId, deviceData);
+        
+        // Handle unauthorized (try token refresh)
+        if (response && response.status === 401) {
+            console.log('Đang làm mới token...');
+            
+            // Try to refresh token if function exists
+            if (typeof refreshToken === 'function') {
+                const refreshed = await refreshToken(1);
+                
+                if (refreshed) {
+                    // Token refresh successful, retry update
+                    console.log('Làm mới token thành công, thử lại...');
+                    updateDevice(); // Call function again
+                    return;
+                } else {
+                    // Token refresh failed, redirect to login
+                    console.log('Làm mới token thất bại, chuyển hướng đến trang đăng nhập...');
+                    if (typeof redirectToLogin === 'function') {
+                        redirectToLogin();
+                    } else {
+                        window.location.href = '/auth/login';
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // Check for other error response
+        if (response && response.error) {
+            console.error('Lỗi khi cập nhật thiết bị:', response.error);
+            showError(response.error || 'Lỗi khi cập nhật thiết bị. Vui lòng thử lại.');
+            
+            // Re-enable update button
+            updateBtn.disabled = false;
+            updateBtn.innerHTML = 'Cập nhật thiết bị';
+            return;
+        }
         
         // Hide modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
-        modal.hide();
+        if (modal) modal.hide();
         
         // Show success message
-        showSuccess('Device updated successfully');
+        showSuccess('Cập nhật thiết bị thành công');
         
         // Reload devices
         loadDevices();
     } catch (error) {
-        console.error('Error updating device:', error);
-        showError('Error updating device. Please try again.');
+        console.error('Lỗi khi cập nhật thiết bị:', error);
+        showError('Có lỗi xảy ra khi cập nhật thiết bị. Vui lòng thử lại.');
     } finally {
         // Re-enable update button
-        const updateBtn = document.getElementById('updateDeviceBtn');
         updateBtn.disabled = false;
-        updateBtn.innerHTML = 'Update Device';
+        updateBtn.innerHTML = 'Cập nhật thiết bị';
     }
 }
 
