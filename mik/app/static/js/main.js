@@ -265,7 +265,7 @@ async function fetchWithAuth(url, options = {}) {
     // Default configuration
     const defaultOptions = {
         credentials: 'same-origin',
-        cache: false,        // Enable/disable cache
+        cache: 'no-store',   // Disable cache (using valid enum value)
         cacheTime: 30000,    // Cache time in ms (30s default)
         timeout: 30000,      // Request timeout in ms (30s default)
         retries: 1,          // Number of retries for failed requests

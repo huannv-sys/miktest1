@@ -89,15 +89,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const fetchMethod = typeof fetchWithAuth === 'function' ? fetchWithAuth : fetch;
             
             // Try API login first for better token handling
-            const response = await fetchMethod('/auth/api/login', {
+            const response = await fetch('/auth/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ username, password }),
-                cache: false,
-                refreshOnUnauth: false // Don't try to refresh on login
+                cache: 'no-store', // Đúng cách để tắt cache
+                credentials: 'same-origin'
             });
             
             if (response.ok) {
