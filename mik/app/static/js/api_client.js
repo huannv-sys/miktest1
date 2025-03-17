@@ -10,17 +10,31 @@ class ApiClient {
         // Ensure all API endpoints end with a trailing slash to prevent redirects
         this.ensureTrailingSlash = true;
         
-        // Load token from localStorage
-        this.token = localStorage.getItem('access_token');
+        // Load token from localStorage using tokenService if available
+        if (typeof tokenService !== 'undefined') {
+            this.token = tokenService.getAccessToken();
+        } else {
+            this.token = localStorage.getItem('access_token');
+        }
     }
     
     /**
      * Set the authentication token
      * @param {string} token - JWT token
+     * @param {string} refreshToken - JWT refresh token (optional)
      */
-    setToken(token) {
+    setToken(token, refreshToken = null) {
         this.token = token;
-        localStorage.setItem('access_token', token);
+        
+        // Use tokenService if available, otherwise fallback to localStorage
+        if (typeof tokenService !== 'undefined') {
+            tokenService.setTokens(token, refreshToken);
+        } else {
+            localStorage.setItem('access_token', token);
+            if (refreshToken) {
+                localStorage.setItem('refresh_token', refreshToken);
+            }
+        }
     }
     
     /**
@@ -28,7 +42,14 @@ class ApiClient {
      */
     clearToken() {
         this.token = null;
-        localStorage.removeItem('access_token');
+        
+        // Use tokenService if available, otherwise fallback to localStorage
+        if (typeof tokenService !== 'undefined') {
+            tokenService.clearTokens();
+        } else {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+        }
     }
     
     /**
@@ -155,7 +176,16 @@ class ApiClient {
         const response = await this.request('/auth/api/login', 'POST', { username, password });
         
         if (response && response.access_token) {
-            this.setToken(response.access_token);
+            // Store both access and refresh tokens if available
+            this.setToken(
+                response.access_token, 
+                response.refresh_token || null
+            );
+            
+            // Store user data if available
+            if (response.user && typeof tokenService !== 'undefined') {
+                tokenService.setUser(response.user);
+            }
         }
         
         return response;
