@@ -123,8 +123,8 @@ def create_app():
                     # Check if admin exists
                     admin_user = get_user_by_username("admin")
                     if not admin_user:
-                        # Generate a secure random password for development
-                        admin_password = generate_random_password()
+                        # Use a fixed password for development
+                        admin_password = "admin"
                         create_user(
                             username="admin",
                             password=hash_password(admin_password),
@@ -132,7 +132,7 @@ def create_app():
                             role="admin"
                         )
                         logger.info(f"Development admin user created with password: {admin_password}")
-                        logger.info("SECURITY WARNING: Use environment variables to set admin credentials in production")
+                        logger.info("SECURITY WARNING: Change admin password and use environment variables in production")
     except Exception as e:
         logger.error(f"Error setting up admin user: {str(e)}")
     
