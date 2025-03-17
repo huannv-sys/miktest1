@@ -7,6 +7,8 @@ class ApiClient {
     constructor() {
         this.token = null;
         this.baseUrl = '';
+        // Ensure all API endpoints end with a trailing slash to prevent redirects
+        this.ensureTrailingSlash = true;
         
         // Load token from localStorage
         this.token = localStorage.getItem('access_token');
@@ -57,8 +59,13 @@ class ApiClient {
         }
         
         try {
-            console.log(`API Request: ${method} ${endpoint}`);
-            const response = await fetch(`${this.baseUrl}${endpoint}`, options);
+            // Add trailing slash to endpoint if needed
+            let requestEndpoint = endpoint;
+            if (this.ensureTrailingSlash && !requestEndpoint.endsWith('/')) {
+                requestEndpoint = `${requestEndpoint}/`;
+            }
+            console.log(`API Request: ${method} ${requestEndpoint}`);
+            const response = await fetch(`${this.baseUrl}${requestEndpoint}`, options);
             
             // Special handling for 401 Unauthorized (invalid/expired token)
             if (response.status === 401) {
