@@ -60,6 +60,12 @@ class ApiClient {
      * @returns {Promise} - Promise with API response
      */
     async request(endpoint, method = 'GET', data = null) {
+        // Add trailing slash to endpoint if needed
+        let requestEndpoint = endpoint;
+        if (this.ensureTrailingSlash && !requestEndpoint.endsWith('/')) {
+            requestEndpoint = `${requestEndpoint}/`;
+        }
+        
         const options = {
             method,
             headers: {
@@ -80,17 +86,40 @@ class ApiClient {
         }
         
         try {
-            // Add trailing slash to endpoint if needed
-            let requestEndpoint = endpoint;
-            if (this.ensureTrailingSlash && !requestEndpoint.endsWith('/')) {
-                requestEndpoint = `${requestEndpoint}/`;
-            }
             console.log(`API Request: ${method} ${requestEndpoint}`);
-            const response = await fetch(`${this.baseUrl}${requestEndpoint}`, options);
+            
+            // Use fetchWithAuth if defined for automatic token refresh and better auth handling
+            let response;
+            if (typeof fetchWithAuth === 'function' && this.token && requestEndpoint !== '/auth/api/login/') {
+                console.log('Using fetchWithAuth for authenticated request');
+                response = await fetchWithAuth(`${this.baseUrl}${requestEndpoint}`, options);
+            } else {
+                response = await fetch(`${this.baseUrl}${requestEndpoint}`, options);
+            }
             
             // Special handling for 401 Unauthorized (invalid/expired token)
-            if (response.status === 401) {
+            if (response.status === 401 && requestEndpoint !== '/auth/api/login/') {
                 console.warn('Authentication token expired or invalid');
+                
+                // Try token refresh if not already a refresh request
+                if (typeof refreshToken === 'function' && !requestEndpoint.includes('/auth/refresh')) {
+                    console.log('Attempting to refresh token...');
+                    const refreshed = await refreshToken(1);
+                    
+                    if (refreshed) {
+                        // Token refresh successful, update token and retry the request
+                        if (typeof tokenService !== 'undefined') {
+                            this.token = tokenService.getAccessToken();
+                        }
+                        
+                        if (this.token) {
+                            console.log('Retrying request with new token...');
+                            return this.request(endpoint, method, data);
+                        }
+                    }
+                }
+                
+                // If we got here, token refresh failed or wasn't available
                 this.clearToken();
                 
                 // Redirect to login page if not already there
