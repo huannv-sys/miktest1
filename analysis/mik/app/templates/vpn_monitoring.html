@@ -1,0 +1,769 @@
+{% extends "base.html" %}
+
+{% block title %}VPN Monitoring - MikroTik Monitoring System{% endblock %}
+
+{% block head %}
+<style>
+    .vpn-server-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1rem;
+    }
+    .vpn-server-status.enabled {
+        background-color: rgba(40, 167, 69, 0.2);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+    .vpn-server-status.disabled {
+        background-color: rgba(220, 53, 69, 0.2);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+    .vpn-connection-card {
+        transition: all 0.2s ease;
+    }
+    .vpn-connection-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .status-online {
+        background-color: #28a745;
+    }
+    .status-offline {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h3"><i class="fas fa-shield-alt me-2"></i>VPN Monitoring</h1>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <div class="btn-group">
+                <button id="refresh-vpn-btn" class="btn btn-outline-secondary">
+                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                </button>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
+                    <i class="fas fa-file-export me-1"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Select Device</h5>
+                </div>
+                <div class="card-body">
+                    <select id="device-selector" class="form-select">
+                        <option value="">Loading devices...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="vpn-content" style="display: none;">
+        <div class="row mb-4">
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-dark">
+                        <h5 class="card-title mb-0">VPN Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Total Connections:</span>
+                            <span id="total-connections" class="fw-bold">0</span>
+                        </div>
+                        <div id="connection-types">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>PPTP:</span>
+                                <span id="pptp-connections" class="text-info">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>L2TP:</span>
+                                <span id="l2tp-connections" class="text-info">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>SSTP:</span>
+                                <span id="sstp-connections" class="text-info">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>OpenVPN:</span>
+                                <span id="ovpn-connections" class="text-info">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>IPsec:</span>
+                                <span id="ipsec-connections" class="text-info">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-dark">
+                        <h5 class="card-title mb-0">Server Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="server-status">
+                            <div class="mb-3">
+                                <div id="pptp-status" class="vpn-server-status disabled">
+                                    <span class="status-indicator status-offline"></span>
+                                    <span>PPTP Server: <span class="status-text">Disabled</span></span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div id="l2tp-status" class="vpn-server-status disabled">
+                                    <span class="status-indicator status-offline"></span>
+                                    <span>L2TP Server: <span class="status-text">Disabled</span></span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div id="sstp-status" class="vpn-server-status disabled">
+                                    <span class="status-indicator status-offline"></span>
+                                    <span>SSTP Server: <span class="status-text">Disabled</span></span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div id="ovpn-status" class="vpn-server-status disabled">
+                                    <span class="status-indicator status-offline"></span>
+                                    <span>OpenVPN Server: <span class="status-text">Disabled</span></span>
+                                </div>
+                            </div>
+                            <div>
+                                <div id="ipsec-status" class="vpn-server-status disabled">
+                                    <span class="status-indicator status-offline"></span>
+                                    <span>IPsec: <span class="status-text">Not Configured</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-12 col-xl-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-dark">
+                        <h5 class="card-title mb-0">VPN Chart</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="vpn-chart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Active VPN Connections</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="auto-refresh-switch" checked>
+                            <label class="form-check-label" for="auto-refresh-switch">Auto-refresh (30s)</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Username / ID</th>
+                                        <th>Address</th>
+                                        <th>Uptime</th>
+                                        <th>Encryption</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vpn-connections-table">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3">No VPN connections found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="vpn-loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading VPN data...</p>
+    </div>
+    
+    <div id="no-device-selected" class="text-center py-5">
+        <div class="text-muted">
+            <i class="fas fa-shield-alt fa-4x mb-3"></i>
+            <h4>No Device Selected</h4>
+            <p>Please select a device to view VPN information</p>
+        </div>
+    </div>
+    
+    <div id="vpn-error" class="alert alert-danger" style="display: none;">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <span id="vpn-error-message">Error loading VPN data</span>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportModalLabel">Export VPN Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Export Format</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" id="formatCSV" value="csv" checked>
+                            <label class="form-check-label" for="formatCSV">
+                                CSV
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" id="formatJSON" value="json">
+                            <label class="form-check-label" for="formatJSON">
+                                JSON
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Include</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeConnections" checked>
+                            <label class="form-check-label" for="includeConnections">
+                                Active Connections
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="includeServerConfig" checked>
+                            <label class="form-check-label" for="includeServerConfig">
+                                Server Configuration
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="export-btn">Export</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Details Modal -->
+<div class="modal fade" id="connectionDetailsModal" tabindex="-1" aria-labelledby="connectionDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="connectionDetailsModalLabel">VPN Connection Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="connection-details">
+                    <!-- Connection details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+    // Ensure Chart is defined before using it
+    if (typeof Chart === 'undefined') {
+        console.error('Loading Chart.js from backup source');
+        // Try another CDN as backup
+        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"><\/script>');
+    }
+</script>
+<script src="{{ url_for('static', filename='js/api_client.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const apiClient = new ApiClient();
+    let vpnChart = null;
+    let selectedDeviceId = null;
+    let autoRefreshInterval = null;
+    let vpnData = null;
+    
+    // Load devices for the dropdown
+    loadDevices();
+    
+    // Set up event listeners
+    document.getElementById('device-selector').addEventListener('change', handleDeviceChange);
+    document.getElementById('refresh-vpn-btn').addEventListener('click', refreshVpnData);
+    document.getElementById('auto-refresh-switch').addEventListener('change', toggleAutoRefresh);
+    document.getElementById('export-btn').addEventListener('click', exportVpnData);
+    
+    // Load devices for the dropdown
+    async function loadDevices() {
+        try {
+            const devices = await apiClient.getDevices();
+            
+            const selector = document.getElementById('device-selector');
+            selector.innerHTML = '<option value="">Select a device</option>';
+            
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.id;
+                option.textContent = device.name;
+                selector.appendChild(option);
+            });
+            
+            // Show no device selected message
+            document.getElementById('vpn-loading').style.display = 'none';
+            document.getElementById('no-device-selected').style.display = 'block';
+            document.getElementById('vpn-content').style.display = 'none';
+            document.getElementById('vpn-error').style.display = 'none';
+            
+        } catch (error) {
+            console.error('Error loading devices:', error);
+            showError('Failed to load devices. ' + error.message);
+        }
+    }
+    
+    // Handle device selection change
+    function handleDeviceChange(event) {
+        const deviceId = event.target.value;
+        
+        if (deviceId) {
+            selectedDeviceId = deviceId;
+            loadVpnData(deviceId);
+            startAutoRefresh();
+        } else {
+            selectedDeviceId = null;
+            clearAutoRefresh();
+            document.getElementById('vpn-content').style.display = 'none';
+            document.getElementById('no-device-selected').style.display = 'block';
+            document.getElementById('vpn-error').style.display = 'none';
+        }
+    }
+    
+    // Load VPN data for selected device
+    async function loadVpnData(deviceId) {
+        try {
+            // Show loading
+            document.getElementById('vpn-loading').style.display = 'block';
+            document.getElementById('no-device-selected').style.display = 'none';
+            document.getElementById('vpn-content').style.display = 'none';
+            document.getElementById('vpn-error').style.display = 'none';
+            
+            // Fetch VPN data
+            vpnData = await apiClient.getDeviceVpnData(deviceId);
+            
+            // Update UI with the data
+            updateVpnSummary(vpnData);
+            updateServerStatus(vpnData.server_config);
+            updateConnectionsTable(vpnData.active_connections);
+            updateVpnChart(vpnData);
+            
+            // Show content
+            document.getElementById('vpn-loading').style.display = 'none';
+            document.getElementById('vpn-content').style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error loading VPN data:', error);
+            document.getElementById('vpn-loading').style.display = 'none';
+            showError('Failed to load VPN data. ' + error.message);
+        }
+    }
+    
+    // Refresh VPN data manually
+    function refreshVpnData() {
+        if (selectedDeviceId) {
+            loadVpnData(selectedDeviceId);
+        }
+    }
+    
+    // Update VPN summary statistics
+    function updateVpnSummary(data) {
+        document.getElementById('total-connections').textContent = data.total_connections;
+        document.getElementById('pptp-connections').textContent = data.connections_by_type.pptp;
+        document.getElementById('l2tp-connections').textContent = data.connections_by_type.l2tp;
+        document.getElementById('sstp-connections').textContent = data.connections_by_type.sstp;
+        document.getElementById('ovpn-connections').textContent = data.connections_by_type.ovpn;
+        document.getElementById('ipsec-connections').textContent = data.connections_by_type.ipsec;
+    }
+    
+    // Update VPN server status
+    function updateServerStatus(config) {
+        // PPTP Status
+        updateServerStatusElement('pptp', config.pptp.enabled);
+        
+        // L2TP Status
+        updateServerStatusElement('l2tp', config.l2tp.enabled);
+        
+        // SSTP Status
+        updateServerStatusElement('sstp', config.sstp.enabled);
+        
+        // OpenVPN Status
+        updateServerStatusElement('ovpn', config.ovpn.enabled);
+        
+        // IPsec Status
+        const ipsecStatus = document.getElementById('ipsec-status');
+        const ipsecIndicator = ipsecStatus.querySelector('.status-indicator');
+        const ipsecText = ipsecStatus.querySelector('.status-text');
+        
+        if (config.ipsec.enabled) {
+            ipsecStatus.classList.remove('disabled');
+            ipsecStatus.classList.add('enabled');
+            ipsecIndicator.classList.remove('status-offline');
+            ipsecIndicator.classList.add('status-online');
+            ipsecText.textContent = `Active (${config.ipsec.policy_count} policies)`;
+        } else {
+            ipsecStatus.classList.remove('enabled');
+            ipsecStatus.classList.add('disabled');
+            ipsecIndicator.classList.remove('status-online');
+            ipsecIndicator.classList.add('status-offline');
+            ipsecText.textContent = 'Not Configured';
+        }
+    }
+    
+    // Helper function to update server status element
+    function updateServerStatusElement(type, enabled) {
+        const statusElement = document.getElementById(`${type}-status`);
+        const indicator = statusElement.querySelector('.status-indicator');
+        const text = statusElement.querySelector('.status-text');
+        
+        if (enabled) {
+            statusElement.classList.remove('disabled');
+            statusElement.classList.add('enabled');
+            indicator.classList.remove('status-offline');
+            indicator.classList.add('status-online');
+            text.textContent = 'Enabled';
+        } else {
+            statusElement.classList.remove('enabled');
+            statusElement.classList.add('disabled');
+            indicator.classList.remove('status-online');
+            indicator.classList.add('status-offline');
+            text.textContent = 'Disabled';
+        }
+    }
+    
+    // Update VPN connections table
+    function updateConnectionsTable(connections) {
+        const tableBody = document.getElementById('vpn-connections-table');
+        
+        if (!connections || connections.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-3">No VPN connections found</td></tr>';
+            return;
+        }
+        
+        tableBody.innerHTML = '';
+        
+        connections.forEach((connection, index) => {
+            const row = document.createElement('tr');
+            
+            // Type column
+            const typeCell = document.createElement('td');
+            typeCell.innerHTML = `<span class="badge bg-${getTypeBadgeColor(connection.type)}">${connection.service}</span>`;
+            row.appendChild(typeCell);
+            
+            // Username/ID column
+            const userCell = document.createElement('td');
+            userCell.textContent = connection.user || 'N/A';
+            row.appendChild(userCell);
+            
+            // Address column
+            const addressCell = document.createElement('td');
+            addressCell.textContent = connection.address || 'N/A';
+            row.appendChild(addressCell);
+            
+            // Uptime column
+            const uptimeCell = document.createElement('td');
+            uptimeCell.textContent = connection.uptime || 'N/A';
+            row.appendChild(uptimeCell);
+            
+            // Encryption column
+            const encryptionCell = document.createElement('td');
+            if (connection.encoding) {
+                encryptionCell.textContent = connection.encoding;
+            } else if (connection.cipher) {
+                encryptionCell.textContent = connection.cipher;
+            } else {
+                encryptionCell.textContent = 'N/A';
+            }
+            row.appendChild(encryptionCell);
+            
+            // Actions column
+            const actionsCell = document.createElement('td');
+            const detailsBtn = document.createElement('button');
+            detailsBtn.className = 'btn btn-sm btn-outline-info';
+            detailsBtn.innerHTML = '<i class="fas fa-info-circle"></i>';
+            detailsBtn.title = 'View Details';
+            detailsBtn.setAttribute('data-connection-index', index);
+            detailsBtn.addEventListener('click', () => showConnectionDetails(connection));
+            actionsCell.appendChild(detailsBtn);
+            row.appendChild(actionsCell);
+            
+            tableBody.appendChild(row);
+        });
+    }
+    
+    // Get badge color based on VPN type
+    function getTypeBadgeColor(type) {
+        switch(type) {
+            case 'pptp': return 'primary';
+            case 'l2tp': return 'success';
+            case 'sstp': return 'info';
+            case 'ovpn': return 'warning';
+            case 'ipsec': return 'secondary';
+            default: return 'dark';
+        }
+    }
+    
+    // Show connection details modal
+    function showConnectionDetails(connection) {
+        const detailsContainer = document.getElementById('connection-details');
+        let detailsHtml = '<div class="table-responsive"><table class="table table-sm">';
+        
+        // Loop through connection properties
+        for (const [key, value] of Object.entries(connection)) {
+            if (key !== 'index') {
+                const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                detailsHtml += `<tr><td class="fw-bold">${formattedKey}</td><td>${value}</td></tr>`;
+            }
+        }
+        
+        detailsHtml += '</table></div>';
+        detailsContainer.innerHTML = detailsHtml;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('connectionDetailsModal'));
+        modal.show();
+    }
+    
+    // Create/update VPN chart
+    function updateVpnChart(data) {
+        const ctx = document.getElementById('vpn-chart').getContext('2d');
+        
+        // Prepare data for the chart
+        const connectionTypes = Object.keys(data.connections_by_type);
+        const connectionCounts = Object.values(data.connections_by_type);
+        
+        // Define colors for each VPN type
+        const colors = {
+            pptp: '#0d6efd',   // Bootstrap primary
+            l2tp: '#198754',   // Bootstrap success
+            sstp: '#0dcaf0',   // Bootstrap info
+            ovpn: '#ffc107',   // Bootstrap warning
+            ipsec: '#6c757d'   // Bootstrap secondary
+        };
+        
+        // Map colors to the connection types
+        const backgroundColors = connectionTypes.map(type => colors[type] || '#6c757d');
+        
+        // If chart already exists, destroy it
+        if (vpnChart) {
+            vpnChart.destroy();
+        }
+        
+        // Create the chart
+        vpnChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: connectionTypes.map(type => type.toUpperCase()),
+                datasets: [{
+                    label: 'Active Connections',
+                    data: connectionCounts,
+                    backgroundColor: backgroundColors,
+                    borderColor: backgroundColors.map(color => color),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Toggle auto-refresh
+    function toggleAutoRefresh(event) {
+        if (event.target.checked) {
+            startAutoRefresh();
+        } else {
+            clearAutoRefresh();
+        }
+    }
+    
+    // Start auto-refresh interval
+    function startAutoRefresh() {
+        // Clear any existing interval
+        clearAutoRefresh();
+        
+        // Only start if a device is selected
+        if (selectedDeviceId && document.getElementById('auto-refresh-switch').checked) {
+            autoRefreshInterval = setInterval(() => {
+                refreshVpnData();
+            }, 30000); // 30 seconds
+        }
+    }
+    
+    // Clear auto-refresh interval
+    function clearAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+    }
+    
+    // Export VPN data
+    function exportVpnData() {
+        if (!vpnData) {
+            return;
+        }
+        
+        const format = document.querySelector('input[name="exportFormat"]:checked').value;
+        const includeConnections = document.getElementById('includeConnections').checked;
+        const includeServerConfig = document.getElementById('includeServerConfig').checked;
+        
+        // Prepare data for export
+        let exportData = {};
+        
+        if (includeConnections) {
+            exportData.connections = vpnData.active_connections;
+        }
+        
+        if (includeServerConfig) {
+            exportData.server_config = vpnData.server_config;
+        }
+        
+        // If nothing selected, export everything
+        if (!includeConnections && !includeServerConfig) {
+            exportData = vpnData;
+        }
+        
+        // Get device name for filename
+        const deviceName = document.getElementById('device-selector').options[document.getElementById('device-selector').selectedIndex].text;
+        const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+        const filename = `vpn_${deviceName}_${timestamp}`;
+        
+        // Export based on format
+        if (format === 'json') {
+            exportJson(exportData, filename);
+        } else {
+            exportCsv(exportData, filename);
+        }
+        
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+        modal.hide();
+    }
+    
+    // Export as JSON
+    function exportJson(data, filename) {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        downloadBlob(blob, `${filename}.json`);
+    }
+    
+    // Export as CSV
+    function exportCsv(data, filename) {
+        let csv = '';
+        
+        // If we have connections, export them
+        if (data.connections || data.active_connections) {
+            const connections = data.connections || data.active_connections;
+            
+            if (connections && connections.length > 0) {
+                // Get headers from first connection
+                const headers = Object.keys(connections[0]);
+                csv += headers.join(',') + '\n';
+                
+                // Add each connection as a row
+                connections.forEach(conn => {
+                    const row = headers.map(header => {
+                        const value = conn[header];
+                        // Quote strings with commas
+                        if (typeof value === 'string' && value.includes(',')) {
+                            return `"${value}"`;
+                        }
+                        return value;
+                    });
+                    csv += row.join(',') + '\n';
+                });
+            }
+        }
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        downloadBlob(blob, `${filename}.csv`);
+    }
+    
+    // Helper function to download a Blob
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    // Show error message
+    function showError(message) {
+        const errorElement = document.getElementById('vpn-error');
+        const errorMessage = document.getElementById('vpn-error-message');
+        
+        errorMessage.textContent = message;
+        errorElement.style.display = 'block';
+        
+        document.getElementById('vpn-content').style.display = 'none';
+        document.getElementById('no-device-selected').style.display = 'none';
+    }
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        clearAutoRefresh();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Users - MikroTik Monitoring System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="flash-messages mb-3"></div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h3"><i class="fas fa-users me-2"></i>User Management</h1>
+        </div>
+        <div class="col-md-6 text-end">
+            <button id="refresh-users-btn" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fas fa-user-plus me-1"></i> Add User
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-dark">
+            <h5 class="card-title mb-0">Users</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table">
+                        <tr>
+                            <td colspan="6" class="text-center">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-user-form">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" required>
+                                <option value="user">User</option>
+                                <option value="operator">Operator</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-user-btn">Save User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="edit-username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="edit-username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="edit-password" placeholder="Leave blank to keep current password">
+                            <div class="form-text">Leave blank to keep current password</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-role" class="form-label">Role</label>
+                            <select class="form-select" id="edit-role" required>
+                                <option value="user">User</option>
+                                <option value="operator">Operator</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" id="delete-user-btn">Delete</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="update-user-btn">Update User</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Information Card -->
+    <div class="card mt-4">
+        <div class="card-header bg-dark">
+            <h5 class="card-title mb-0">Role Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Administrator</h5>
+                            <p class="card-text">Full access to all system features including user management, system settings, and device administration.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check-circle text-success me-2"></i>User Management</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>System Settings</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Device Management</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Alert Configuration</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Device Configuration</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Operator</h5>
+                            <p class="card-text">Can view all data and manage devices, but cannot modify system settings or manage users.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>User Management</li>
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>System Settings</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Device Management</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Alert Configuration</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>Device Configuration</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">User</h5>
+                            <p class="card-text">Read-only access to monitoring data. Cannot modify devices or settings.</p>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>User Management</li>
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>System Settings</li>
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>Device Management</li>
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>Alert Configuration</li>
+                                <li><i class="fas fa-times-circle text-danger me-2"></i>Device Configuration</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>View Dashboard</li>
+                                <li><i class="fas fa-check-circle text-success me-2"></i>View Monitoring Data</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+{% endblock %}

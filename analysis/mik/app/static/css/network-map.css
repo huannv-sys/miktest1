@@ -1,0 +1,192 @@
+/* Network Map Styles */
+
+#network-map-container {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    background-color: var(--bs-dark);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.network-map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Node styles */
+.node {
+    cursor: pointer;
+    stroke-width: 1.5px;
+    stroke: rgba(255,255,255,0.2);
+}
+
+.node-router {
+    fill: #3498db;
+}
+
+.node-switch {
+    fill: #2ecc71;
+}
+
+.node-ap {
+    fill: #f39c12;
+}
+
+.node-client {
+    fill: #95a5a6;
+}
+
+/* Link styles */
+.link {
+    stroke-opacity: 0.6;
+}
+
+.link-wired {
+    stroke: #7f8c8d;
+}
+
+.link-wireless {
+    stroke: #e67e22;
+    stroke-dasharray: 5, 5;
+}
+
+.link-vpn {
+    stroke: #9b59b6;
+    stroke-dasharray: 10, 5;
+}
+
+/* Label styles */
+.node-label {
+    fill: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Legend styles */
+.legend text {
+    fill: #fff;
+    font-size: 12px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Map controls */
+.map-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.map-control-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bs-dark);
+    border: 1px solid var(--bs-gray-700);
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.map-control-btn:hover {
+    background-color: var(--bs-primary);
+}
+
+/* Tooltip styles */
+#network-map-tooltip {
+    position: absolute;
+    background-color: var(--bs-dark);
+    color: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 500;
+    font-size: 12px;
+    max-width: 200px;
+    text-align: center;
+}
+
+#network-map-tooltip:after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    margin-left: -8px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--bs-dark);
+}
+
+/* Loading indicator */
+#network-map-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 200;
+    color: #fff;
+}
+
+#network-map-loading .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Error message */
+#network-map-error {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bs-danger);
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 4px;
+    display: none;
+    z-index: 300;
+    font-size: 14px;
+    max-width: 80%;
+    text-align: center;
+}
+
+/* Map information panel */
+.map-info-panel {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 100;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #network-map-container {
+        height: 400px;
+    }
+    
+    .map-info-panel {
+        display: none;
+    }
+}
