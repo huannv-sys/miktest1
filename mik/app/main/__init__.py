@@ -1,0 +1,1 @@
+from mik.app.main.routes import main_bp, init_app
