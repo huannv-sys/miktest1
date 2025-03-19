@@ -354,11 +354,78 @@
         
         // Hàm tải dữ liệu VPN
         function loadVpnData(deviceId) {
-            // Hiển thị thông báo đang tải
-            document.querySelector('.vpn-summary').classList.add('d-none');
-            document.querySelector('.vpn-status').classList.add('d-none');
-            document.querySelector('.vpn-connections').classList.add('d-none');
-            document.querySelector('.vpn-charts').classList.add('d-none');
+            // Hiển thị các container nhưng với loading animation
+            document.querySelector('.vpn-summary').classList.remove('d-none');
+            document.querySelector('.vpn-status').classList.remove('d-none');
+            document.querySelector('.vpn-connections').classList.remove('d-none');
+            document.querySelector('.vpn-charts').classList.remove('d-none');
+            
+            // Thêm loading animation cho mỗi phần
+            showLoading('totalConnections', 'dots', 'Đang tải số liệu...');
+            showLoading('totalRx', 'dots', 'Đang tải dữ liệu...');
+            showLoading('totalTx', 'dots', 'Đang tải dữ liệu...');
+            showLoading('activeConnections', 'dots', 'Đang tải dữ liệu...');
+            
+            // Loading cho trạng thái dịch vụ
+            const services = ['pptp-status', 'l2tp-status', 'sstp-status', 'ovpn-status'];
+            services.forEach(service => {
+                const element = document.getElementById(service);
+                if (element) {
+                    element.className = 'bi bi-arrow-repeat display-4 mb-3';
+                    element.classList.add('spinner-grow');
+                }
+            });
+            
+            // Loading cho bảng kết nối
+            document.getElementById('vpnConnectionsTable').innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-4">
+                        <div class="loading-container" style="height: 100px;">
+                            <div class="vpn-loading"></div>
+                            <span class="loading-text">Đang tải dữ liệu kết nối VPN...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            // Loading cho các biểu đồ
+            const chartContainers = ['vpnTypeChart', 'vpnTrafficChart'];
+            chartContainers.forEach(container => {
+                const element = document.getElementById(container);
+                const parentNode = element.parentNode;
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading-container chart-loading-container';
+                loadingDiv.style.position = 'absolute';
+                loadingDiv.style.top = '0';
+                loadingDiv.style.left = '0';
+                loadingDiv.style.width = '100%';
+                loadingDiv.style.height = '100%';
+                loadingDiv.style.backgroundColor = 'rgba(0,0,0,0.1)';
+                loadingDiv.style.display = 'flex';
+                loadingDiv.style.justifyContent = 'center';
+                loadingDiv.style.alignItems = 'center';
+                loadingDiv.style.zIndex = '10';
+                
+                let loadingType = container === 'vpnTypeChart' ? 'network' : 'traffic';
+                loadingDiv.innerHTML = `
+                    <div class="${loadingType}-loading"></div>
+                    <span class="loading-text">Đang tải biểu đồ...</span>
+                `;
+                
+                // Check nếu đã có loading container trước đó
+                const existingLoading = parentNode.querySelector('.chart-loading-container');
+                if (existingLoading) {
+                    parentNode.removeChild(existingLoading);
+                }
+                
+                parentNode.style.position = 'relative';
+                parentNode.appendChild(loadingDiv);
+                
+                // Khởi tạo animation cho network nếu cần
+                if (loadingType === 'network') {
+                    window.loadingAnimations.initNetworkAnimation(loadingDiv);
+                }
+            });
             
             // Mô phỏng API call
             setTimeout(() => {

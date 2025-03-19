@@ -1,0 +1,300 @@
+/* Loading animations for Network Data */
+
+/* Base spinner container */
+.loading-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+}
+
+/* Text below spinner */
+.loading-text {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--bs-info);
+  animation: pulse 1.5s infinite;
+}
+
+/* Network topology loading effect */
+.network-loading {
+  width: 120px;
+  height: 120px;
+  position: relative;
+}
+
+.network-node {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background-color: var(--bs-info);
+  transform-origin: center;
+}
+
+.network-node:nth-child(1) {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--bs-primary);
+  width: 20px;
+  height: 20px;
+  animation: pulse 1.5s infinite;
+}
+
+.network-node:nth-child(2) {
+  top: 30%;
+  left: 30%;
+  animation: orbit 3s infinite linear;
+}
+
+.network-node:nth-child(3) {
+  top: 70%;
+  left: 30%;
+  animation: orbit 4s infinite linear reverse;
+}
+
+.network-node:nth-child(4) {
+  top: 30%;
+  left: 70%;
+  animation: orbit 3.5s infinite linear;
+}
+
+.network-node:nth-child(5) {
+  top: 70%;
+  left: 70%;
+  animation: orbit 5s infinite linear reverse;
+}
+
+.network-link {
+  position: absolute;
+  height: 2px;
+  background-color: rgba(var(--bs-info-rgb), 0.4);
+  transform-origin: 0 0;
+}
+
+/* Data packets animation */
+.data-packet {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--bs-warning);
+  z-index: 10;
+}
+
+/* VPN loading spinner */
+.vpn-loading {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+
+.vpn-loading:before,
+.vpn-loading:after {
+  content: '';
+  border-radius: 50%;
+  position: absolute;
+  inset: 0;
+  box-shadow: 0 0 0 3px var(--bs-info);
+}
+
+.vpn-loading:after {
+  box-shadow: 0 2px 0 var(--bs-info) inset;
+  animation: vpn-rotate 1s linear infinite;
+}
+
+/* Device scanning animation */
+.scan-loading {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  background-color: transparent;
+  border-radius: 50%;
+  margin: 0 auto;
+  box-shadow: 0 0 0 2px var(--bs-primary) inset;
+  overflow: hidden;
+}
+
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: var(--bs-info);
+  top: 50%;
+  transform-origin: center;
+  animation: scan 1.5s linear infinite;
+}
+
+.scan-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bs-success);
+  top: calc(50% - 4px);
+  left: calc(50% - 4px);
+  z-index: 10;
+}
+
+/* Traffic flow loading */
+.traffic-loading {
+  position: relative;
+  width: 100px;
+  height: 30px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.traffic-arrow-container {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background-color: rgba(var(--bs-info-rgb), 0.2);
+}
+
+.traffic-incoming-arrow,
+.traffic-outgoing-arrow {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  width: 20px;
+  animation-duration: 1.5s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.traffic-incoming-arrow {
+  background-color: var(--bs-success);
+  left: 0;
+  animation-name: traffic-right;
+}
+
+.traffic-outgoing-arrow {
+  background-color: var(--bs-warning);
+  right: 0;
+  animation-name: traffic-left;
+}
+
+/* Data loading bar */
+.data-loading {
+  width: 200px;
+  height: 6px;
+  background-color: rgba(var(--bs-info-rgb), 0.2);
+  margin: 10px auto;
+  overflow: hidden;
+  position: relative;
+  border-radius: 3px;
+}
+
+.data-loading-progress {
+  position: absolute;
+  height: 100%;
+  width: 30%;
+  background-color: var(--bs-info);
+  animation: data-loading 2s infinite ease-in-out;
+  border-radius: 3px;
+}
+
+/* Loading grid animation */
+.grid-loading {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 3px;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+
+.grid-item {
+  background-color: rgba(var(--bs-info-rgb), 0.2);
+  animation: grid-fade 2s infinite;
+}
+
+/* Fading dots loader */
+.dots-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--bs-info);
+  animation: dot-fade 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* Keyframe Animations */
+@keyframes pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+}
+
+@keyframes vpn-rotate {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes scan {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes traffic-right {
+  0% { transform: translateX(0); opacity: 0.7; }
+  100% { transform: translateX(calc(100% - 20px)); opacity: 0.3; }
+}
+
+@keyframes traffic-left {
+  0% { transform: translateX(0); opacity: 0.7; }
+  100% { transform: translateX(calc(-100% + 20px)); opacity: 0.3; }
+}
+
+@keyframes data-loading {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+@keyframes grid-fade {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes dot-fade {
+  0%, 100% { transform: scale(0.5); opacity: 0.3; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+/* Media query for smaller screens */
+@media (max-width: 576px) {
+  .loading-container {
+    height: 100px;
+  }
+  
+  .network-loading,
+  .vpn-loading,
+  .scan-loading {
+    transform: scale(0.8);
+  }
+}
