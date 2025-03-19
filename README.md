@@ -1,98 +1,85 @@
 # MikroTik Monitor
 
-Hệ thống giám sát và quản lý thiết bị MikroTik với hiệu suất cao và bảo mật tốt.
+Dashboard giám sát và quản lý thiết bị MikroTik toàn diện.
 
 ## Tính năng
 
-- Giám sát thiết bị MikroTik theo thời gian thực
-- Cảnh báo khi phát hiện vấn đề
-- Sao lưu và phục hồi cấu hình
-- Theo dõi hiệu suất mạng
-- Bản đồ mạng trực quan
-- Giao diện người dùng hiện đại và thân thiện
-
-## Yêu cầu
-
-- Python 3.8+
-- Pip
-- Các thư viện phụ thuộc (xem file `pyproject.toml`)
+- Giám sát tình trạng thiết bị theo thời gian thực
+- Theo dõi hiệu suất CPU, bộ nhớ và mạng
+- Quản lý danh sách các thiết bị MikroTik
+- Hiển thị bản đồ mạng và kết nối giữa các thiết bị
+- Cảnh báo khi phát hiện sự cố hoặc khi thông số vượt ngưỡng
+- Giám sát kết nối VPN
 
 ## Cài đặt
 
-1. Clone repository này:
-   ```
-   git clone https://github.com/yourusername/mikrotik-monitor.git
-   cd mikrotik-monitor
-   ```
+### Yêu cầu
 
-2. Tạo và kích hoạt môi trường ảo:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # Trên Windows: venv\Scripts\activate
-   ```
+- Python 3.9+
+- PostgreSQL
+- Các gói phụ thuộc trong pyproject.toml
 
-3. Cài đặt các gói phụ thuộc:
-   ```
-   pip install -r requirements.txt
-   ```
+### Cấu hình môi trường
 
-4. Tạo file cấu hình:
-   ```
-   cp .env.sample .env
-   ```
+Tạo file `.env` với nội dung sau:
 
-5. Chỉnh sửa file `.env` với các cài đặt phù hợp cho môi trường của bạn.
+```
+SESSION_SECRET=your_secret_key_here
+FLASK_APP=run_server.py
+FLASK_DEBUG=1
+PYTHONPATH=.
+PYTHONUNBUFFERED=1
+DATABASE_URL=postgresql://postgres:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}
+```
 
-## Chạy ứng dụng
+### Cài đặt dependencies
 
-1. Khởi động ứng dụng:
-   ```
-   python main.py
-   ```
+```
+pip install -e .
+```
 
-2. Truy cập ứng dụng qua trình duyệt tại địa chỉ:
-   ```
-   http://localhost:5000
-   ```
+## Khởi động ứng dụng
 
-3. Đăng nhập với tài khoản mặc định:
-   - Username: admin
-   - Password: admin123
+### Sử dụng Python trực tiếp
 
-## Cấu hình
+```
+python run_server.py
+```
 
-Các tùy chọn cấu hình chính:
+hoặc
 
-- `SECRET_KEY`: Khóa bí mật cho ứng dụng Flask
-- `JWT_SECRET_KEY`: Khóa bí mật cho JWT
-- `DATABASE_URL`: URL kết nối đến cơ sở dữ liệu
-- `MIKROTIK_CONNECTION_TIMEOUT`: Thời gian chờ kết nối với thiết bị MikroTik (giây)
+```
+python run.py
+```
 
-Xem thêm các tùy chọn trong file `.env.sample`.
+### Sử dụng Gunicorn (cho môi trường production)
 
-## Bảo mật
+```
+bash run_gunicorn.sh
+```
 
-Trong môi trường sản xuất, hãy đảm bảo:
+## Đăng nhập
 
-- Thay đổi mật khẩu admin mặc định
-- Sử dụng khóa bí mật mạnh và ngẫu nhiên
-- Bật SSL/TLS cho kết nối HTTPS
-- Cấu hình đúng các quyền truy cập cơ sở dữ liệu
+Tài khoản mặc định:
+- Username: admin
+- Password: admin
 
-## Phát triển
+## Cấu trúc dự án
 
-1. Fork repository này
-2. Tạo branch tính năng mới (`git checkout -b feature/amazing-feature`)
-3. Commit các thay đổi (`git commit -m 'Add some amazing feature'`)
-4. Push lên branch (`git push origin feature/amazing-feature`)
-5. Tạo Pull Request mới
-
-## Giấy phép
-
-Phân phối theo Giấy phép MIT. Xem `LICENSE` để biết thêm thông tin.
-
-## Liên hệ
-
-Tên của bạn - email@example.com
-
-Link dự án: [https://github.com/yourusername/mikrotik-monitor](https://github.com/yourusername/mikrotik-monitor)
+```
+mikrotik-monitor/
+├── mik/                # Package chính
+│   ├── app/            # Ứng dụng Flask
+│   │   ├── api/        # API endpoints
+│   │   ├── core/       # Logic nghiệp vụ
+│   │   ├── database/   # Mô hình và CRUD 
+│   │   ├── static/     # Tài nguyên tĩnh
+│   │   └── templates/  # Templates
+├── templates/          # Templates giao diện
+│   ├── base.html       # Template cơ sở
+│   ├── index.html      # Trang chủ
+│   ├── login.html      # Trang đăng nhập
+│   └── dashboard.html  # Dashboard chính
+├── run_server.py       # Entry point chính
+└── run.py              # Entry point thay thế
+```

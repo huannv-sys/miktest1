@@ -1,0 +1,840 @@
+{% extends "base.html" %}
+
+{% block title %}MikroTik Monitor - Giám sát VPN{% endblock %}
+
+{% block styles %}
+<style>
+    .vpn-card {
+        transition: transform 0.3s;
+    }
+    .vpn-card:hover {
+        transform: translateY(-5px);
+    }
+    .status-enabled {
+        color: #28a745;
+    }
+    .status-disabled {
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Giám sát VPN</h1>
+    <div>
+        <button class="btn btn-outline-secondary me-2" id="btnRefresh">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+        </button>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btnExport">
+                <i class="bi bi-download"></i> Xuất dữ liệu
+            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><h6 class="dropdown-header">Tự động làm mới</h6></li>
+                    <li><a class="dropdown-item refresh-option" href="#" data-interval="0">Tắt</a></li>
+                    <li><a class="dropdown-item refresh-option" href="#" data-interval="30">30 giây</a></li>
+                    <li><a class="dropdown-item refresh-option" href="#" data-interval="60">1 phút</a></li>
+                    <li><a class="dropdown-item refresh-option" href="#" data-interval="300">5 phút</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4" role="alert">
+    <i class="bi bi-info-circle-fill"></i> Chọn thiết bị để xem thông tin kết nối VPN của thiết bị đó.
+</div>
+
+<!-- Chọn thiết bị -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Chọn thiết bị</h5>
+    </div>
+    <div class="card-body">
+        <select class="form-select" id="deviceSelect">
+            <option value="">-- Chọn thiết bị --</option>
+            {% for device in devices %}
+            <option value="{{ device.id }}">{{ device.name }} ({{ device.ip_address }})</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- Tổng quan VPN -->
+<div class="row mb-4 vpn-summary d-none">
+    <div class="col-md-3 mb-3">
+        <div class="card vpn-card bg-primary text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Tổng số kết nối</h5>
+                <h2 class="display-4" id="totalConnections">0</h2>
+                <p class="card-text">
+                    <i class="bi bi-people"></i> Tổng số kết nối VPN hiện tại
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card vpn-card bg-success text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Kết nối hoạt động</h5>
+                <h2 class="display-4" id="activeConnections">0</h2>
+                <p class="card-text">
+                    <i class="bi bi-check-circle"></i> Kết nối đang hoạt động
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card vpn-card bg-warning text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Lưu lượng vào</h5>
+                <h2 class="display-4" id="totalRx">0</h2>
+                <p class="card-text">
+                    <i class="bi bi-arrow-down"></i> Tổng lưu lượng nhận
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card vpn-card bg-info text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Lưu lượng ra</h5>
+                <h2 class="display-4" id="totalTx">0</h2>
+                <p class="card-text">
+                    <i class="bi bi-arrow-up"></i> Tổng lưu lượng gửi
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trạng thái dịch vụ VPN -->
+<div class="card mb-4 vpn-status d-none">
+    <div class="card-header bg-dark">
+        <h5 class="mb-0"><i class="bi bi-shield-check"></i> Trạng thái dịch vụ VPN</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-hdd-network-fill display-4 mb-3" id="pptp-status"></i>
+                        <h5 class="card-title">PPTP Server</h5>
+                        <p class="card-text" id="pptp-details">Không có thông tin</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-hdd-network-fill display-4 mb-3" id="l2tp-status"></i>
+                        <h5 class="card-title">L2TP Server</h5>
+                        <p class="card-text" id="l2tp-details">Không có thông tin</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-hdd-network-fill display-4 mb-3" id="sstp-status"></i>
+                        <h5 class="card-title">SSTP Server</h5>
+                        <p class="card-text" id="sstp-details">Không có thông tin</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-hdd-network-fill display-4 mb-3" id="ovpn-status"></i>
+                        <h5 class="card-title">OpenVPN Server</h5>
+                        <p class="card-text" id="ovpn-details">Không có thông tin</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Danh sách kết nối VPN -->
+<div class="card mb-4 vpn-connections d-none">
+    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-people"></i> Kết nối VPN</h5>
+        <div class="input-group" style="width: 300px;">
+            <input type="text" class="form-control" placeholder="Tìm kiếm..." id="searchConnections">
+            <button class="btn btn-outline-secondary" type="button">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tên người dùng</th>
+                        <th>Loại kết nối</th>
+                        <th>Địa chỉ IP nguồn</th>
+                        <th>Địa chỉ IP được cấp</th>
+                        <th>Thời gian kết nối</th>
+                        <th>Uptime</th>
+                        <th>Lưu lượng Rx/Tx</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="vpnConnectionsTable">
+                    <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Biểu đồ phân phối kết nối VPN -->
+<div class="row mb-4 vpn-charts d-none">
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Phân phối loại kết nối</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="vpnTypeChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Lưu lượng VPN theo thời gian</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="vpnTrafficChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chi tiết kết nối Modal -->
+<div class="modal fade" id="connectionDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="connectionDetailTitle">Chi tiết kết nối VPN</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Thông tin kết nối</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <tbody id="connectionInfoTable">
+                                        <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Thông số kết nối</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <tbody id="connectionStatsTable">
+                                        <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Lưu lượng theo thời gian</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="connectionTrafficChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="disconnectBtn">
+                    <i class="bi bi-x-circle"></i> Ngắt kết nối
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    // JavaScript sẽ được thêm vào sau
+    document.addEventListener('DOMContentLoaded', function() {
+        // Biến toàn cục
+        let refreshInterval = null;
+        let vpnTypeChart = null;
+        let vpnTrafficChart = null;
+        let connectionTrafficChart = null;
+        
+        // Xử lý chọn thiết bị
+        document.getElementById('deviceSelect').addEventListener('change', function() {
+            const deviceId = this.value;
+            if (deviceId) {
+                loadVpnData(deviceId);
+            } else {
+                // Ẩn tất cả các phần khi không có thiết bị nào được chọn
+                document.querySelector('.vpn-summary').classList.add('d-none');
+                document.querySelector('.vpn-status').classList.add('d-none');
+                document.querySelector('.vpn-connections').classList.add('d-none');
+                document.querySelector('.vpn-charts').classList.add('d-none');
+            }
+        });
+        
+        // Xử lý nút làm mới
+        document.getElementById('btnRefresh').addEventListener('click', function() {
+            const deviceId = document.getElementById('deviceSelect').value;
+            if (deviceId) {
+                loadVpnData(deviceId);
+            }
+        });
+        
+        // Xử lý tự động làm mới
+        document.querySelectorAll('.refresh-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                const interval = parseInt(this.getAttribute('data-interval'));
+                
+                // Xóa interval hiện tại nếu có
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                
+                // Thiết lập interval mới nếu không phải 0
+                if (interval > 0) {
+                    refreshInterval = setInterval(() => {
+                        const deviceId = document.getElementById('deviceSelect').value;
+                        if (deviceId) {
+                            loadVpnData(deviceId);
+                        }
+                    }, interval * 1000);
+                    
+                    // Hiển thị thông báo
+                    alert(`Tự động làm mới mỗi ${interval} giây đã được bật`);
+                } else {
+                    // Hiển thị thông báo
+                    alert('Tự động làm mới đã tắt');
+                }
+            });
+        });
+        
+        // Xử lý nút xuất dữ liệu
+        document.getElementById('btnExport').addEventListener('click', function() {
+            // Mô phỏng xuất dữ liệu
+            const deviceId = document.getElementById('deviceSelect').value;
+            if (!deviceId) {
+                alert('Vui lòng chọn một thiết bị trước');
+                return;
+            }
+            
+            alert('Chức năng xuất dữ liệu sẽ được triển khai sau');
+        });
+        
+        // Hàm tải dữ liệu VPN
+        function loadVpnData(deviceId) {
+            // Hiển thị thông báo đang tải
+            document.querySelector('.vpn-summary').classList.add('d-none');
+            document.querySelector('.vpn-status').classList.add('d-none');
+            document.querySelector('.vpn-connections').classList.add('d-none');
+            document.querySelector('.vpn-charts').classList.add('d-none');
+            
+            // Mô phỏng API call
+            setTimeout(() => {
+                // Mô phỏng dữ liệu (trong ứng dụng thực tế sẽ là dữ liệu từ API)
+                const vpnData = {
+                    summary: {
+                        total: 12,
+                        active: 10,
+                        totalRx: "2.5 GB",
+                        totalTx: "1.8 GB"
+                    },
+                    services: {
+                        pptp: { enabled: true, maxConnections: 30, encryption: "mppe128" },
+                        l2tp: { enabled: true, maxConnections: 20, ipsecSecret: "Configured" },
+                        sstp: { enabled: false },
+                        ovpn: { enabled: true, port: 1194, protocol: "tcp" }
+                    },
+                    connections: [
+                        { 
+                            id: 1, 
+                            username: "user1", 
+                            type: "pptp", 
+                            sourceIp: "203.0.113.45", 
+                            assignedIp: "10.10.10.2", 
+                            connectedAt: "2025-03-19T08:45:23", 
+                            uptime: "2h 15m", 
+                            rx: "350 MB", 
+                            tx: "120 MB" 
+                        },
+                        { 
+                            id: 2, 
+                            username: "user2", 
+                            type: "l2tp", 
+                            sourceIp: "198.51.100.76", 
+                            assignedIp: "10.10.10.3", 
+                            connectedAt: "2025-03-19T09:12:05", 
+                            uptime: "1h 48m", 
+                            rx: "420 MB", 
+                            tx: "280 MB" 
+                        },
+                        { 
+                            id: 3, 
+                            username: "user3", 
+                            type: "ovpn", 
+                            sourceIp: "192.0.2.154", 
+                            assignedIp: "10.8.0.2", 
+                            connectedAt: "2025-03-19T10:05:18", 
+                            uptime: "55m", 
+                            rx: "780 MB", 
+                            tx: "320 MB" 
+                        },
+                        { 
+                            id: 4, 
+                            username: "user4", 
+                            type: "l2tp", 
+                            sourceIp: "203.0.113.112", 
+                            assignedIp: "10.10.10.4", 
+                            connectedAt: "2025-03-19T10:22:41", 
+                            uptime: "38m", 
+                            rx: "210 MB", 
+                            tx: "95 MB" 
+                        },
+                        { 
+                            id: 5, 
+                            username: "user5", 
+                            type: "pptp", 
+                            sourceIp: "198.51.100.22", 
+                            assignedIp: "10.10.10.5", 
+                            connectedAt: "2025-03-19T10:40:15", 
+                            uptime: "20m", 
+                            rx: "85 MB", 
+                            tx: "42 MB" 
+                        }
+                    ],
+                    chartData: {
+                        types: {
+                            labels: ["PPTP", "L2TP", "SSTP", "OpenVPN"],
+                            data: [2, 2, 0, 1]
+                        },
+                        traffic: {
+                            labels: ["09:00", "09:30", "10:00", "10:30", "11:00"],
+                            rx: [125, 256, 320, 450, 520],
+                            tx: [85, 140, 210, 280, 350]
+                        }
+                    }
+                };
+                
+                // Cập nhật tổng quan
+                document.getElementById('totalConnections').textContent = vpnData.summary.total;
+                document.getElementById('activeConnections').textContent = vpnData.summary.active;
+                document.getElementById('totalRx').textContent = vpnData.summary.totalRx;
+                document.getElementById('totalTx').textContent = vpnData.summary.totalTx;
+                document.querySelector('.vpn-summary').classList.remove('d-none');
+                
+                // Cập nhật trạng thái dịch vụ
+                updateServiceStatus('pptp', vpnData.services.pptp);
+                updateServiceStatus('l2tp', vpnData.services.l2tp);
+                updateServiceStatus('sstp', vpnData.services.sstp);
+                updateServiceStatus('ovpn', vpnData.services.ovpn);
+                document.querySelector('.vpn-status').classList.remove('d-none');
+                
+                // Cập nhật danh sách kết nối
+                updateVpnConnectionsTable(vpnData.connections);
+                document.querySelector('.vpn-connections').classList.remove('d-none');
+                
+                // Cập nhật biểu đồ
+                updateVpnCharts(vpnData.chartData);
+                document.querySelector('.vpn-charts').classList.remove('d-none');
+            }, 1000);
+        }
+        
+        // Cập nhật trạng thái dịch vụ
+        function updateServiceStatus(service, config) {
+            const iconElement = document.getElementById(`${service}-status`);
+            const detailsElement = document.getElementById(`${service}-details`);
+            
+            if (config.enabled) {
+                iconElement.classList.add('status-enabled');
+                iconElement.classList.remove('status-disabled');
+                
+                let details = 'Đang hoạt động';
+                if (service === 'pptp' && config.encryption) {
+                    details += `<br>Mã hóa: ${config.encryption}`;
+                } else if (service === 'l2tp' && config.ipsecSecret) {
+                    details += `<br>IPsec: Đã cấu hình`;
+                } else if (service === 'ovpn' && config.port) {
+                    details += `<br>Port: ${config.port} (${config.protocol})`;
+                }
+                
+                if (config.maxConnections) {
+                    details += `<br>Max: ${config.maxConnections} kết nối`;
+                }
+                
+                detailsElement.innerHTML = details;
+            } else {
+                iconElement.classList.add('status-disabled');
+                iconElement.classList.remove('status-enabled');
+                detailsElement.innerHTML = 'Đã tắt';
+            }
+        }
+        
+        // Cập nhật bảng kết nối VPN
+        function updateVpnConnectionsTable(connections) {
+            const tableBody = document.getElementById('vpnConnectionsTable');
+            tableBody.innerHTML = '';
+            
+            connections.forEach(conn => {
+                const row = document.createElement('tr');
+                
+                // Format connection type badge
+                let typeBadge = '';
+                if (conn.type === 'pptp') {
+                    typeBadge = '<span class="badge bg-primary">PPTP</span>';
+                } else if (conn.type === 'l2tp') {
+                    typeBadge = '<span class="badge bg-success">L2TP</span>';
+                } else if (conn.type === 'sstp') {
+                    typeBadge = '<span class="badge bg-info">SSTP</span>';
+                } else if (conn.type === 'ovpn') {
+                    typeBadge = '<span class="badge bg-warning">OpenVPN</span>';
+                }
+                
+                row.innerHTML = `
+                    <td>${conn.username}</td>
+                    <td>${typeBadge}</td>
+                    <td>${conn.sourceIp}</td>
+                    <td>${conn.assignedIp}</td>
+                    <td>${formatDateTime(conn.connectedAt)}</td>
+                    <td>${conn.uptime}</td>
+                    <td>${conn.rx} / ${conn.tx}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary btn-view-connection" data-connection-id="${conn.id}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-disconnect" data-connection-id="${conn.id}" data-username="${conn.username}">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Thêm event listeners cho các nút
+            document.querySelectorAll('.btn-view-connection').forEach(button => {
+                button.addEventListener('click', function() {
+                    const connectionId = this.getAttribute('data-connection-id');
+                    showConnectionDetails(connectionId);
+                });
+            });
+            
+            document.querySelectorAll('.btn-disconnect').forEach(button => {
+                button.addEventListener('click', function() {
+                    const connectionId = this.getAttribute('data-connection-id');
+                    const username = this.getAttribute('data-username');
+                    
+                    if (confirm(`Bạn có chắc chắn muốn ngắt kết nối của người dùng ${username}?`)) {
+                        // Mô phỏng ngắt kết nối
+                        alert(`Đã ngắt kết nối của người dùng ${username}`);
+                    }
+                });
+            });
+            
+            // Xử lý tìm kiếm kết nối
+            document.getElementById('searchConnections').addEventListener('keyup', function() {
+                const searchText = this.value.toLowerCase();
+                const rows = document.querySelectorAll('#vpnConnectionsTable tr');
+                
+                rows.forEach(row => {
+                    const username = row.cells[0].textContent.toLowerCase();
+                    const sourceIp = row.cells[2].textContent.toLowerCase();
+                    const assignedIp = row.cells[3].textContent.toLowerCase();
+                    
+                    if (username.includes(searchText) || sourceIp.includes(searchText) || assignedIp.includes(searchText)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Cập nhật biểu đồ VPN
+        function updateVpnCharts(chartData) {
+            // Biểu đồ phân phối loại kết nối
+            const typeCtx = document.getElementById('vpnTypeChart').getContext('2d');
+            
+            if (vpnTypeChart) {
+                vpnTypeChart.destroy();
+            }
+            
+            vpnTypeChart = new Chart(typeCtx, {
+                type: 'pie',
+                data: {
+                    labels: chartData.types.labels,
+                    datasets: [{
+                        data: chartData.types.data,
+                        backgroundColor: [
+                            'rgba(13, 110, 253, 0.7)',  // PPTP
+                            'rgba(25, 135, 84, 0.7)',   // L2TP
+                            'rgba(13, 202, 240, 0.7)',  // SSTP
+                            'rgba(255, 193, 7, 0.7)'    // OpenVPN
+                        ],
+                        borderColor: [
+                            'rgba(13, 110, 253, 1)',
+                            'rgba(25, 135, 84, 1)',
+                            'rgba(13, 202, 240, 1)',
+                            'rgba(255, 193, 7, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw;
+                                    return `${label}: ${value} kết nối`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Biểu đồ lưu lượng theo thời gian
+            const trafficCtx = document.getElementById('vpnTrafficChart').getContext('2d');
+            
+            if (vpnTrafficChart) {
+                vpnTrafficChart.destroy();
+            }
+            
+            vpnTrafficChart = new Chart(trafficCtx, {
+                type: 'line',
+                data: {
+                    labels: chartData.traffic.labels,
+                    datasets: [
+                        {
+                            label: 'Lưu lượng nhận (MB)',
+                            data: chartData.traffic.rx,
+                            borderColor: 'rgba(25, 135, 84, 1)',
+                            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Lưu lượng gửi (MB)',
+                            data: chartData.traffic.tx,
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lưu lượng (MB)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Thời gian'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Hiển thị chi tiết kết nối
+        function showConnectionDetails(connectionId) {
+            // Mô phỏng lấy dữ liệu chi tiết kết nối
+            const connectionDetail = {
+                id: connectionId,
+                username: "user1",
+                type: "pptp",
+                sourceIp: "203.0.113.45",
+                assignedIp: "10.10.10.2",
+                connectedAt: "2025-03-19T08:45:23",
+                uptime: "2h 15m",
+                callerId: "+84981234567",
+                callerOriginal: "203.0.113.45:1234",
+                encryption: "mppe128",
+                authentication: "mschap2",
+                stats: {
+                    rx: "350 MB",
+                    tx: "120 MB",
+                    rxRate: "1.2 Mbps",
+                    txRate: "0.8 Mbps",
+                    rxPackets: "245,678",
+                    txPackets: "156,432",
+                    rxDropped: "0",
+                    txDropped: "0"
+                },
+                traffic: {
+                    labels: ["09:00", "09:15", "09:30", "09:45", "10:00", "10:15", "10:30", "10:45", "11:00"],
+                    rx: [25, 38, 45, 68, 85, 92, 105, 112, 120],
+                    tx: [15, 22, 34, 42, 56, 65, 78, 85, 95]
+                }
+            };
+            
+            // Cập nhật tiêu đề modal
+            document.getElementById('connectionDetailTitle').textContent = 
+                `Chi tiết kết nối VPN - ${connectionDetail.username} (${connectionDetail.assignedIp})`;
+            
+            // Cập nhật thông tin kết nối
+            const infoTable = document.getElementById('connectionInfoTable');
+            infoTable.innerHTML = `
+                <tr><td>Tên người dùng</td><td>${connectionDetail.username}</td></tr>
+                <tr><td>Loại kết nối</td><td>${formatConnectionType(connectionDetail.type)}</td></tr>
+                <tr><td>Địa chỉ IP nguồn</td><td>${connectionDetail.sourceIp}</td></tr>
+                <tr><td>Địa chỉ IP được cấp</td><td>${connectionDetail.assignedIp}</td></tr>
+                <tr><td>Thời gian kết nối</td><td>${formatDateTime(connectionDetail.connectedAt)}</td></tr>
+                <tr><td>Uptime</td><td>${connectionDetail.uptime}</td></tr>
+                <tr><td>Caller ID</td><td>${connectionDetail.callerId}</td></tr>
+                <tr><td>Caller Original</td><td>${connectionDetail.callerOriginal}</td></tr>
+                <tr><td>Mã hóa</td><td>${connectionDetail.encryption}</td></tr>
+                <tr><td>Xác thực</td><td>${connectionDetail.authentication}</td></tr>
+            `;
+            
+            // Cập nhật thông số kết nối
+            const statsTable = document.getElementById('connectionStatsTable');
+            statsTable.innerHTML = `
+                <tr><td>Lưu lượng nhận</td><td>${connectionDetail.stats.rx}</td></tr>
+                <tr><td>Lưu lượng gửi</td><td>${connectionDetail.stats.tx}</td></tr>
+                <tr><td>Tốc độ nhận</td><td>${connectionDetail.stats.rxRate}</td></tr>
+                <tr><td>Tốc độ gửi</td><td>${connectionDetail.stats.txRate}</td></tr>
+                <tr><td>Gói tin nhận</td><td>${connectionDetail.stats.rxPackets}</td></tr>
+                <tr><td>Gói tin gửi</td><td>${connectionDetail.stats.txPackets}</td></tr>
+                <tr><td>Gói tin bị hủy (Rx)</td><td>${connectionDetail.stats.rxDropped}</td></tr>
+                <tr><td>Gói tin bị hủy (Tx)</td><td>${connectionDetail.stats.txDropped}</td></tr>
+            `;
+            
+            // Cập nhật biểu đồ lưu lượng
+            const trafficCtx = document.getElementById('connectionTrafficChart').getContext('2d');
+            
+            if (connectionTrafficChart) {
+                connectionTrafficChart.destroy();
+            }
+            
+            connectionTrafficChart = new Chart(trafficCtx, {
+                type: 'line',
+                data: {
+                    labels: connectionDetail.traffic.labels,
+                    datasets: [
+                        {
+                            label: 'Lưu lượng nhận (MB)',
+                            data: connectionDetail.traffic.rx,
+                            borderColor: 'rgba(25, 135, 84, 1)',
+                            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Lưu lượng gửi (MB)',
+                            data: connectionDetail.traffic.tx,
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lưu lượng (MB)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Thời gian'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Xử lý nút ngắt kết nối
+            document.getElementById('disconnectBtn').setAttribute('data-connection-id', connectionId);
+            document.getElementById('disconnectBtn').setAttribute('data-username', connectionDetail.username);
+            
+            document.getElementById('disconnectBtn').addEventListener('click', function() {
+                const connectionId = this.getAttribute('data-connection-id');
+                const username = this.getAttribute('data-username');
+                
+                if (confirm(`Bạn có chắc chắn muốn ngắt kết nối của người dùng ${username}?`)) {
+                    // Mô phỏng ngắt kết nối
+                    alert(`Đã ngắt kết nối của người dùng ${username}`);
+                    
+                    // Đóng modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('connectionDetailModal'));
+                    modal.hide();
+                }
+            });
+            
+            // Hiển thị modal
+            const detailModal = new bootstrap.Modal(document.getElementById('connectionDetailModal'));
+            detailModal.show();
+        }
+        
+        // Helper function: Format loại kết nối
+        function formatConnectionType(type) {
+            switch (type) {
+                case 'pptp': return '<span class="badge bg-primary">PPTP</span>';
+                case 'l2tp': return '<span class="badge bg-success">L2TP</span>';
+                case 'sstp': return '<span class="badge bg-info">SSTP</span>';
+                case 'ovpn': return '<span class="badge bg-warning">OpenVPN</span>';
+                default: return '<span class="badge bg-secondary">Unknown</span>';
+            }
+        }
+        
+        // Helper function: Format datetime
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('vi-VN');
+        }
+    });
+</script>
+{% endblock %}

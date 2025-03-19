@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}MikroTik Monitor - {% if device %}Chỉnh sửa{% else %}Thêm{% endif %} thiết bị{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-hdd-network"></i> 
+            {% if device %}Chỉnh sửa thiết bị{% else %}Thêm thiết bị mới{% endif %}
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_device') if not device else url_for('edit_device', id=device.id) }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Tên thiết bị</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                            value="{{ device.name if device else '' }}" required>
+                        <div class="form-text">Tên hiển thị của thiết bị</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ip_address" class="form-label">Địa chỉ IP</label>
+                        <input type="text" class="form-control" id="ip_address" name="ip_address"
+                            value="{{ device.ip_address if device else '' }}" required>
+                        <div class="form-text">Địa chỉ IP hoặc tên miền của thiết bị</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Tên đăng nhập</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                            value="{{ device.username if device else '' }}" required>
+                        <div class="form-text">Tài khoản API của MikroTik</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mật khẩu</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                            {% if not device %}required{% endif %}>
+                        <div class="form-text">
+                            {% if device %}
+                            Để trống nếu không thay đổi mật khẩu
+                            {% else %}
+                            Mật khẩu cho tài khoản API
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="port" class="form-label">API Port</label>
+                        <input type="number" class="form-control" id="port" name="port"
+                            value="{{ device.port if device else '8728' }}">
+                        <div class="form-text">Cổng API (mặc định: 8728)</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3 pt-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="use_ssl" name="use_ssl" 
+                                {% if device and device.use_ssl %}checked{% endif %}>
+                            <label class="form-check-label" for="use_ssl">Sử dụng kết nối SSL</label>
+                        </div>
+                        <div class="form-text">Bật nếu thiết bị được cấu hình API SSL</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="notes" class="form-label">Ghi chú</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3">{{ device.notes if device else '' }}</textarea>
+                <div class="form-text">Thông tin bổ sung về thiết bị (không bắt buộc)</div>
+            </div>
+            
+            <div class="text-end mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary me-2">Hủy bỏ</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> 
+                    {% if device %}Cập nhật{% else %}Lưu{% endif %} thiết bị
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

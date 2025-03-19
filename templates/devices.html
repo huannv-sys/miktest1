@@ -1,0 +1,793 @@
+{% extends "base.html" %}
+
+{% block title %}MikroTik Monitor - Thiết bị{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Thiết bị</h1>
+    <div>
+        <button class="btn btn-outline-secondary me-2" id="btnScanNetwork">
+            <i class="bi bi-search"></i> Quét mạng
+        </button>
+        <a href="{{ url_for('add_device') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Thêm thiết bị
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Thiết bị MikroTik</h5>
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-light active" id="btnListView">
+                <i class="bi bi-list"></i> Danh sách
+            </button>
+            <button type="button" class="btn btn-outline-light" id="btnGridView">
+                <i class="bi bi-grid"></i> Lưới
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Chế độ xem danh sách -->
+        <div id="listView">
+            {% if devices %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên thiết bị</th>
+                            <th>Địa chỉ IP</th>
+                            <th>Trạng thái</th>
+                            <th>Thông tin hệ thống</th>
+                            <th>Cập nhật cuối</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for device in devices %}
+                        <tr>
+                            <td>{{ device.name }}</td>
+                            <td>{{ device.ip_address }}</td>
+                            <td>
+                                {% if device.status == 'online' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle-fill"></i> Online
+                                </span>
+                                {% elif device.status == 'offline' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle-fill"></i> Offline
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-question-circle-fill"></i> Unknown
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="system-info">
+                                {% if device.system_info %}
+                                {{ device.system_info.model }} - RouterOS {{ device.system_info.version }}
+                                {% else %}
+                                <span class="text-muted">Chưa có thông tin</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ device.last_check|default('Chưa cập nhật', true) }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary btn-details" data-device-id="{{ device.id }}">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <a href="{{ url_for('edit_device', id=device.id) }}" class="btn btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-delete" data-device-id="{{ device.id }}" data-device-name="{{ device.name }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-hdd-network display-1 text-muted"></i>
+                <h4 class="mt-3">Chưa có thiết bị nào</h4>
+                <p class="text-muted">Hãy thêm thiết bị MikroTik đầu tiên của bạn để bắt đầu giám sát.</p>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" id="btnEmptyScanNetwork">
+                        <i class="bi bi-search"></i> Quét mạng
+                    </button>
+                    <a href="{{ url_for('add_device') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Thêm thiết bị
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Chế độ xem lưới -->
+        <div id="gridView" class="d-none">
+            {% if devices %}
+            <div class="row">
+                {% for device in devices %}
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 device-card">
+                        <div class="card-header">
+                            <h5 class="mb-0 d-flex align-items-center">
+                                {% if device.status == 'online' %}
+                                <i class="bi bi-circle-fill text-success me-2"></i>
+                                {% elif device.status == 'offline' %}
+                                <i class="bi bi-circle-fill text-danger me-2"></i>
+                                {% else %}
+                                <i class="bi bi-circle-fill text-secondary me-2"></i>
+                                {% endif %}
+                                {{ device.name }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <small class="text-muted">Địa chỉ IP:</small>
+                                <div>{{ device.ip_address }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Thông tin hệ thống:</small>
+                                <div>
+                                    {% if device.system_info %}
+                                    {{ device.system_info.model }} - RouterOS {{ device.system_info.version }}
+                                    {% else %}
+                                    <span class="text-muted">Chưa có thông tin</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div>
+                                <small class="text-muted">Cập nhật cuối:</small>
+                                <div>{{ device.last_check|default('Chưa cập nhật', true) }}</div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group btn-group-sm w-100">
+                                <button type="button" class="btn btn-outline-primary btn-details" data-device-id="{{ device.id }}">
+                                    <i class="bi bi-eye"></i> Chi tiết
+                                </button>
+                                <a href="{{ url_for('edit_device', id=device.id) }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i> Sửa
+                                </a>
+                                <button type="button" class="btn btn-outline-danger btn-delete" data-device-id="{{ device.id }}" data-device-name="{{ device.name }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-hdd-network display-1 text-muted"></i>
+                <h4 class="mt-3">Chưa có thiết bị nào</h4>
+                <p class="text-muted">Hãy thêm thiết bị MikroTik đầu tiên của bạn để bắt đầu giám sát.</p>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" id="btnEmptyScanNetwork">
+                        <i class="bi bi-search"></i> Quét mạng
+                    </button>
+                    <a href="{{ url_for('add_device') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Thêm thiết bị
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chi tiết thiết bị Modal -->
+<div class="modal fade" id="deviceDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceDetailTitle">Chi tiết thiết bị</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-5" id="deviceDetailLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Đang tải...</span>
+                    </div>
+                    <p class="mt-2">Đang tải thông tin thiết bị...</p>
+                </div>
+                
+                <div class="device-detail-content d-none">
+                    <ul class="nav nav-tabs" id="deviceTabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#overview">Tổng quan</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#interfaces">Interfaces</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#clients">Clients</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#resources">Tài nguyên</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#commands">Lệnh</a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <!-- Tổng quan -->
+                        <div class="tab-pane fade show active" id="overview">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Thông tin hệ thống</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table">
+                                                <tbody id="systemInfoTable">
+                                                    <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Tài nguyên hệ thống</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">CPU Usage</label>
+                                                <div class="progress mb-2">
+                                                    <div id="cpuProgressBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                                <small id="cpuUsageText" class="text-muted">0%</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Memory Usage</label>
+                                                <div class="progress mb-2">
+                                                    <div id="memoryProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                                <small id="memoryUsageText" class="text-muted">0%</small>
+                                            </div>
+                                            <div>
+                                                <label class="form-label">Disk Usage</label>
+                                                <div class="progress mb-2">
+                                                    <div id="diskProgressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                                <small id="diskUsageText" class="text-muted">0%</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Interfaces -->
+                        <div class="tab-pane fade" id="interfaces">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Tên</th>
+                                            <th>Loại</th>
+                                            <th>MAC Address</th>
+                                            <th>Trạng thái</th>
+                                            <th>TX/RX</th>
+                                            <th>Cập nhật</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="interfacesTable">
+                                        <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Clients -->
+                        <div class="tab-pane fade" id="clients">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>MAC Address</th>
+                                            <th>IP Address</th>
+                                            <th>Hostname</th>
+                                            <th>Interface</th>
+                                            <th>Loại kết nối</th>
+                                            <th>Thời gian kết nối</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clientsTable">
+                                        <!-- Dữ liệu sẽ được cập nhật bằng JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Tài nguyên -->
+                        <div class="tab-pane fade" id="resources">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">CPU Usage History</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="cpuChart" height="250"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Memory Usage History</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="memoryChart" height="250"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Network Traffic</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="interfaceSelect" class="form-label">Interface</label>
+                                        <select class="form-select" id="interfaceSelect">
+                                            <option value="">All Interfaces</option>
+                                        </select>
+                                    </div>
+                                    <canvas id="trafficChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lệnh -->
+                        <div class="tab-pane fade" id="commands">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Terminal</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="commandInput" class="form-label">Lệnh RouterOS</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="commandInput" placeholder="/system resource print">
+                                            <button class="btn btn-primary" id="runCommandBtn">Thực thi</button>
+                                        </div>
+                                        <div class="form-text">Nhập lệnh RouterOS để gửi đến thiết bị</div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <label class="form-label">Kết quả</label>
+                                        <pre class="bg-dark text-light p-3 rounded" id="commandResult">Chưa có kết quả. Hãy thực thi một lệnh.</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Thao tác nhanh</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/system resource print">System Resources</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/system health print">System Health</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/interface print">List Interfaces</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/ip address print">IP Addresses</button>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/ip dhcp-server lease print">DHCP Leases</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/interface wireless registration-table print">Wireless Clients</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/system scheduler print">Scheduled Tasks</button>
+                                            <button class="btn btn-outline-primary mb-2 w-100" data-command="/system package update print">Package Updates</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="refreshDeviceBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Làm mới
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quét mạng Modal -->
+<div class="modal fade" id="scanNetworkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quét mạng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="subnetInput" class="form-label">Subnet</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="subnetInput" placeholder="192.168.1.0/24">
+                        <button class="btn btn-primary" id="startScanBtn">Bắt đầu quét</button>
+                    </div>
+                    <div class="form-text">Nhập dải mạng để quét tìm thiết bị MikroTik</div>
+                </div>
+                
+                <div class="progress mb-3 d-none" id="scanProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <div class="scan-results d-none">
+                    <h5 class="mb-3">Kết quả quét</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Hostname</th>
+                                    <th>Loại thiết bị</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scanResultsTable">
+                                <!-- Kết quả quét sẽ được thêm vào đây -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Xóa thiết bị Modal -->
+<div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa thiết bị <strong id="deleteDeviceName"></strong>?</p>
+                <p class="text-danger">Hành động này không thể hoàn tác và sẽ xóa tất cả dữ liệu liên quan đến thiết bị này.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Xóa thiết bị</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    // JavaScript sẽ được thêm vào sau
+    document.addEventListener('DOMContentLoaded', function() {
+        // Chuyển đổi giữa chế độ xem danh sách và lưới
+        document.getElementById('btnListView').addEventListener('click', function() {
+            document.getElementById('listView').classList.remove('d-none');
+            document.getElementById('gridView').classList.add('d-none');
+            document.getElementById('btnListView').classList.add('active');
+            document.getElementById('btnGridView').classList.remove('active');
+        });
+        
+        document.getElementById('btnGridView').addEventListener('click', function() {
+            document.getElementById('gridView').classList.remove('d-none');
+            document.getElementById('listView').classList.add('d-none');
+            document.getElementById('btnGridView').classList.add('active');
+            document.getElementById('btnListView').classList.remove('active');
+        });
+        
+        // Xử lý quét mạng
+        document.getElementById('btnScanNetwork').addEventListener('click', function() {
+            const scanNetworkModal = new bootstrap.Modal(document.getElementById('scanNetworkModal'));
+            scanNetworkModal.show();
+        });
+        
+        if (document.getElementById('btnEmptyScanNetwork')) {
+            document.getElementById('btnEmptyScanNetwork').addEventListener('click', function() {
+                const scanNetworkModal = new bootstrap.Modal(document.getElementById('scanNetworkModal'));
+                scanNetworkModal.show();
+            });
+        }
+        
+        // Xử lý chi tiết thiết bị
+        document.querySelectorAll('.btn-details').forEach(button => {
+            button.addEventListener('click', function() {
+                const deviceId = this.getAttribute('data-device-id');
+                const deviceDetailModal = new bootstrap.Modal(document.getElementById('deviceDetailModal'));
+                deviceDetailModal.show();
+                
+                // Hiển thị loading và ẩn nội dung
+                document.getElementById('deviceDetailLoading').classList.remove('d-none');
+                document.querySelector('.device-detail-content').classList.add('d-none');
+                
+                // Gọi API để lấy thông tin chi tiết thiết bị
+                // Đoạn code này sẽ được thay thế bằng API call thực tế
+                setTimeout(() => {
+                    // Ẩn loading và hiển thị nội dung
+                    document.getElementById('deviceDetailLoading').classList.add('d-none');
+                    document.querySelector('.device-detail-content').classList.remove('d-none');
+                    
+                    // Cập nhật dữ liệu (mẫu)
+                    document.getElementById('deviceDetailTitle').textContent = 'Router Office';
+                    
+                    // Cập nhật thông tin hệ thống
+                    const systemInfoTable = document.getElementById('systemInfoTable');
+                    systemInfoTable.innerHTML = `
+                        <tr><td>Model</td><td>RouterBOARD 3011UiAS</td></tr>
+                        <tr><td>RouterOS Version</td><td>6.48.6 (stable)</td></tr>
+                        <tr><td>Serial Number</td><td>37E70B7B2307</td></tr>
+                        <tr><td>Uptime</td><td>23d 7h 12m 5s</td></tr>
+                        <tr><td>CPU</td><td>ARM 32bit 1066MHz</td></tr>
+                        <tr><td>Architecture</td><td>arm</td></tr>
+                        <tr><td>Board Name</td><td>RB3011UiAS</td></tr>
+                        <tr><td>Firmware Type</td><td>licensed</td></tr>
+                    `;
+                    
+                    // Cập nhật tài nguyên
+                    const cpuUsage = 42;
+                    const memoryUsage = 58;
+                    const diskUsage = 27;
+                    
+                    document.getElementById('cpuProgressBar').style.width = cpuUsage + '%';
+                    document.getElementById('cpuUsageText').textContent = cpuUsage + '% (0.42 GHz)';
+                    
+                    document.getElementById('memoryProgressBar').style.width = memoryUsage + '%';
+                    document.getElementById('memoryUsageText').textContent = memoryUsage + '% (234MB / 512MB)';
+                    
+                    document.getElementById('diskProgressBar').style.width = diskUsage + '%';
+                    document.getElementById('diskUsageText').textContent = diskUsage + '% (86MB / 320MB)';
+                    
+                    // Cập nhật interfaces
+                    const interfacesTable = document.getElementById('interfacesTable');
+                    interfacesTable.innerHTML = `
+                        <tr>
+                            <td>ether1</td>
+                            <td>ether</td>
+                            <td>E4:8D:8C:7B:72:01</td>
+                            <td><span class="badge bg-success">running</span></td>
+                            <td>23.5 Mbps / 45.2 Mbps</td>
+                            <td>1 phút trước</td>
+                        </tr>
+                        <tr>
+                            <td>ether2</td>
+                            <td>ether</td>
+                            <td>E4:8D:8C:7B:72:02</td>
+                            <td><span class="badge bg-success">running</span></td>
+                            <td>1.2 Mbps / 3.5 Mbps</td>
+                            <td>1 phút trước</td>
+                        </tr>
+                        <tr>
+                            <td>bridge1</td>
+                            <td>bridge</td>
+                            <td>E4:8D:8C:7B:72:01</td>
+                            <td><span class="badge bg-success">running</span></td>
+                            <td>25.8 Mbps / 48.6 Mbps</td>
+                            <td>1 phút trước</td>
+                        </tr>
+                        <tr>
+                            <td>wlan1</td>
+                            <td>wlan</td>
+                            <td>E4:8D:8C:7B:72:05</td>
+                            <td><span class="badge bg-success">running</span></td>
+                            <td>5.7 Mbps / 12.3 Mbps</td>
+                            <td>1 phút trước</td>
+                        </tr>
+                    `;
+                    
+                    // Cập nhật clients
+                    const clientsTable = document.getElementById('clientsTable');
+                    clientsTable.innerHTML = `
+                        <tr>
+                            <td>AA:BB:CC:DD:EE:01</td>
+                            <td>192.168.1.100</td>
+                            <td>laptop-user1</td>
+                            <td>wlan1</td>
+                            <td>Wireless</td>
+                            <td>2h 15m</td>
+                        </tr>
+                        <tr>
+                            <td>AA:BB:CC:DD:EE:02</td>
+                            <td>192.168.1.101</td>
+                            <td>desktop-user2</td>
+                            <td>ether2</td>
+                            <td>DHCP</td>
+                            <td>5h 32m</td>
+                        </tr>
+                        <tr>
+                            <td>AA:BB:CC:DD:EE:03</td>
+                            <td>192.168.1.102</td>
+                            <td>phone-user3</td>
+                            <td>wlan1</td>
+                            <td>Wireless</td>
+                            <td>45m</td>
+                        </tr>
+                        <tr>
+                            <td>AA:BB:CC:DD:EE:04</td>
+                            <td>192.168.1.103</td>
+                            <td>tablet-user4</td>
+                            <td>wlan1</td>
+                            <td>Wireless</td>
+                            <td>1h 10m</td>
+                        </tr>
+                    `;
+                    
+                    // Cập nhật interface select
+                    const interfaceSelect = document.getElementById('interfaceSelect');
+                    interfaceSelect.innerHTML = `
+                        <option value="">All Interfaces</option>
+                        <option value="ether1">ether1</option>
+                        <option value="ether2">ether2</option>
+                        <option value="bridge1">bridge1</option>
+                        <option value="wlan1">wlan1</option>
+                    `;
+                    
+                    // Tạo các biểu đồ (mẫu)
+                    const cpuChartEl = document.getElementById('cpuChart').getContext('2d');
+                    const cpuChart = new Chart(cpuChartEl, {
+                        type: 'line',
+                        data: {
+                            labels: ['09:00', '09:05', '09:10', '09:15', '09:20', '09:25', '09:30'],
+                            datasets: [{
+                                label: 'CPU Usage (%)',
+                                data: [25, 35, 40, 30, 45, 40, 42],
+                                borderColor: 'rgba(13, 110, 253, 1)',
+                                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                                tension: 0.2,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                    
+                    const memoryChartEl = document.getElementById('memoryChart').getContext('2d');
+                    const memoryChart = new Chart(memoryChartEl, {
+                        type: 'line',
+                        data: {
+                            labels: ['09:00', '09:05', '09:10', '09:15', '09:20', '09:25', '09:30'],
+                            datasets: [{
+                                label: 'Memory Usage (%)',
+                                data: [45, 48, 52, 55, 58, 56, 58],
+                                borderColor: 'rgba(25, 135, 84, 1)',
+                                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                                tension: 0.2,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                    
+                    const trafficChartEl = document.getElementById('trafficChart').getContext('2d');
+                    const trafficChart = new Chart(trafficChartEl, {
+                        type: 'line',
+                        data: {
+                            labels: ['09:00', '09:05', '09:10', '09:15', '09:20', '09:25', '09:30'],
+                            datasets: [{
+                                label: 'TX (Mbps)',
+                                data: [15, 22, 18, 25, 30, 28, 23],
+                                borderColor: 'rgba(13, 110, 253, 1)',
+                                backgroundColor: 'transparent',
+                                tension: 0.2
+                            }, {
+                                label: 'RX (Mbps)',
+                                data: [32, 28, 35, 42, 38, 45, 48],
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                backgroundColor: 'transparent',
+                                tension: 0.2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Xử lý lệnh
+                    document.querySelectorAll('[data-command]').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const command = this.getAttribute('data-command');
+                            document.getElementById('commandInput').value = command;
+                        });
+                    });
+                    
+                    document.getElementById('runCommandBtn').addEventListener('click', function() {
+                        const command = document.getElementById('commandInput').value;
+                        if (!command) return;
+                        
+                        document.getElementById('commandResult').textContent = 'Đang thực thi lệnh...';
+                        
+                        // Mô phỏng gửi lệnh tới API
+                        setTimeout(() => {
+                            if (command.includes('/system resource print')) {
+                                document.getElementById('commandResult').textContent = 
+                                    '   uptime: 2d3h25m3s\n' +
+                                    '  version: 6.48.6 (stable)\n' +
+                                    '   build-time: Feb/20/2022 12:36:42\n' +
+                                    '    factory-software: 6.48.6\n' +
+                                    '    board-name: RB3011UiAS\n' +
+                                    '    total-memory: 512.0MiB\n' +
+                                    '    cpu: ARM\n' +
+                                    '    cpu-count: 1\n' +
+                                    '    cpu-frequency: 1066MHz\n' +
+                                    '    cpu-load: 24%\n' +
+                                    '    free-memory: 215.0MiB\n' +
+                                    '    free-hdd-space: 234.3MiB\n' +
+                                    '    architecture-name: arm\n';
+                            } else {
+                                document.getElementById('commandResult').textContent = 'Lệnh đã được thực thi thành công.';
+                            }
+                        }, 1000);
+                    });
+                    
+                }, 1500);
+            });
+        });
+        
+        // Xử lý xóa thiết bị
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.addEventListener('click', function() {
+                const deviceId = this.getAttribute('data-device-id');
+                const deviceName = this.getAttribute('data-device-name');
+                
+                document.getElementById('deleteDeviceName').textContent = deviceName;
+                document.getElementById('confirmDeleteBtn').setAttribute('data-device-id', deviceId);
+                
+                const deleteDeviceModal = new bootstrap.Modal(document.getElementById('deleteDeviceModal'));
+                deleteDeviceModal.show();
+            });
+        });
+        
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            const deviceId = this.getAttribute('data-device-id');
+            
+            // Mô phỏng xóa thiết bị
+            alert('Đã xóa thiết bị ID: ' + deviceId);
+            
+            // Đóng modal
+            const deleteDeviceModal = bootstrap.Modal.getInstance(document.getElementById('deleteDeviceModal'));
+            deleteDeviceModal.hide();
+            
+            // Trong ứng dụng thực tế, chuyển hướng hoặc tải lại trang sau khi xóa
+            // window.location.reload();
+        });
+    });
+</script>
+{% endblock %}

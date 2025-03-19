@@ -1,5 +1,5 @@
-run = "python simple_server.py"
-onBoot = true
-persistent = true
-hidden = false
-name = "flask_server"
+command = "python run_server.py"
+entrypoint = "run_server.py"
+language = "python3"
+run = "python run_server.py"
+onBoot = false

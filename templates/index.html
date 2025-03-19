@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}MikroTik Monitor - Trang chủ{% endblock %}
+
+{% block content %}
+<div class="jumbotron py-5">
+    <h1 class="display-4 mb-4">Chào mừng đến với MikroTik Monitor</h1>
+    <p class="lead">Hệ thống giám sát và quản lý thiết bị MikroTik toàn diện.</p>
+    <hr class="my-4">
+    <p>Theo dõi hiệu suất mạng, quản lý thiết bị và nhận cảnh báo từ bất kỳ đâu.</p>
+    <div class="mt-4">
+        {% if current_user.is_authenticated %}
+        <a class="btn btn-primary btn-lg" href="{{ url_for('dashboard') }}">
+            <i class="bi bi-speedometer2"></i> Đi đến Dashboard
+        </a>
+        {% else %}
+        <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}">
+            <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-up display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Giám sát thời gian thực</h5>
+                <p class="card-text">Theo dõi CPU, bộ nhớ, lưu lượng mạng và trạng thái thiết bị theo thời gian thực.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-bell display-4 text-warning mb-3"></i>
+                <h5 class="card-title">Cảnh báo thông minh</h5>
+                <p class="card-text">Nhận thông báo khi phát hiện sự cố hoặc khi các thông số vượt ngưỡng xác định.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-diagram-3 display-4 text-success mb-3"></i>
+                <h5 class="card-title">Bản đồ mạng</h5>
+                <p class="card-text">Hiển thị trực quan kết nối mạng và mối quan hệ giữa các thiết bị trong hệ thống.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

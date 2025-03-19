@@ -1,6 +1,4 @@
-from mik.app import create_app
-
-app = create_app()
+from run_server import app
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

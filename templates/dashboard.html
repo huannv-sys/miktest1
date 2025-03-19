@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}MikroTik Monitor - Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+    .card {
+        transition: transform 0.3s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .device-status-online {
+        color: #28a745;
+    }
+    .device-status-offline {
+        color: #dc3545;
+    }
+    .device-status-unknown {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Dashboard</h1>
+    <button class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Thêm thiết bị
+    </button>
+</div>
+
+<!-- Tổng quan -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Tổng số thiết bị</h5>
+                <h2 class="display-4">{{ devices|length }}</h2>
+                <p class="card-text">
+                    <i class="bi bi-hdd-network"></i> Thiết bị đã thêm vào hệ thống
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Online</h5>
+                <h2 class="display-4">{{ devices|selectattr('status', 'eq', 'online')|list|length }}</h2>
+                <p class="card-text">
+                    <i class="bi bi-check-circle"></i> Thiết bị đang hoạt động
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Offline</h5>
+                <h2 class="display-4">{{ devices|selectattr('status', 'eq', 'offline')|list|length }}</h2>
+                <p class="card-text">
+                    <i class="bi bi-x-circle"></i> Thiết bị không hoạt động
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Cảnh báo</h5>
+                <h2 class="display-4">0</h2>
+                <p class="card-text">
+                    <i class="bi bi-exclamation-triangle"></i> Cảnh báo chưa xử lý
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Danh sách thiết bị -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Thiết bị MikroTik</h5>
+    </div>
+    <div class="card-body">
+        {% if devices %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tên thiết bị</th>
+                        <th>Địa chỉ IP</th>
+                        <th>Trạng thái</th>
+                        <th>Cập nhật cuối</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>{{ device.name }}</td>
+                        <td>{{ device.ip_address }}</td>
+                        <td>
+                            {% if device.status == 'online' %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle-fill"></i> Online
+                            </span>
+                            {% elif device.status == 'offline' %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-x-circle-fill"></i> Offline
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-question-circle-fill"></i> Unknown
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ device.last_check|default('Chưa cập nhật', true) }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-hdd-network display-1 text-muted"></i>
+            <h4 class="mt-3">Chưa có thiết bị nào</h4>
+            <p class="text-muted">Hãy thêm thiết bị MikroTik đầu tiên của bạn để bắt đầu giám sát.</p>
+            <button class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Thêm thiết bị
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Biểu đồ và thống kê -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> CPU Usage</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center py-5">
+                    <p class="text-muted">Biểu đồ sẽ hiển thị ở đây khi có dữ liệu</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Client Connections</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center py-5">
+                    <p class="text-muted">Biểu đồ sẽ hiển thị ở đây khi có dữ liệu</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Dashboard initialized");
+    });
+</script>
+{% endblock %}
