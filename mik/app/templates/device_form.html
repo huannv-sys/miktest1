@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if device %}Edit Device{% else %}Add Device{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            <i class="fas fa-server"></i>
+            {% if device %}Edit Device{% else %}Add Device{% endif %}
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Device Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Device Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ device.name if device else '' }}" required>
+                        <div class="form-text">A friendly name to identify the device</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ip_address" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="ip_address" name="ip_address"
+                               value="{{ device.ip_address if device else '' }}" required>
+                        <div class="form-text">The IP address of the MikroTik device</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="port" class="form-label">API Port</label>
+                        <input type="number" class="form-control" id="port" name="port"
+                               value="{{ device.port if device else 8728 }}" required>
+                        <div class="form-text">The API port (default: 8728)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               value="{{ device.username if device else '' }}" required>
+                        <div class="form-text">The username for API access</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               {% if not device %}required{% endif %}>
+                        <div class="form-text">
+                            {% if device %}
+                            Leave blank to keep current password
+                            {% else %}
+                            The password for API access
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('main.devices') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Devices
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if device %}
+                            <i class="fas fa-save"></i> Update Device
+                            {% else %}
+                            <i class="fas fa-plus"></i> Add Device
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Configuration Tips</h6>
+                <ul class="mb-4">
+                    <li>Make sure the device is accessible from your network</li>
+                    <li>The API service should be enabled on the MikroTik device</li>
+                    <li>Use secure credentials with appropriate permissions</li>
+                    <li>Default API port is 8728 (or 8729 for SSL)</li>
+                </ul>
+
+                <h6>API Access Setup</h6>
+                <ol>
+                    <li>Log in to your MikroTik device</li>
+                    <li>Go to IP → Services</li>
+                    <li>Enable the "api" and "api-ssl" services</li>
+                    <li>Set allowed address list if needed</li>
+                    <li>Create a user with API access rights</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,1 +1,5 @@
-from mik.app.main.routes import main_bp, init_app
+from flask import Blueprint
+
+bp = Blueprint('main', __name__)
+
+from mik.app.main import routes

@@ -1,144 +1,158 @@
-from flask import Blueprint, render_template, redirect, url_for, request, jsonify, flash, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from functools import wraps
-import logging
+from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_user, logout_user, login_required, current_user
+from mik.app.main import bp
+from mik.app.models import User, Device
+from mik.app import db
+from mik.app.mikrotik import get_device_connection, get_system_info, get_interfaces, get_device_clients
+from datetime import datetime
 
-# Import socketio for use in this module
-from mik.app import socketio
-
-logger = logging.getLogger(__name__)
-
-main_bp = Blueprint('main_bp', __name__)
-
-# Role-based access decorator
-def role_required(role):
-    def wrapper(fn):
-        @wraps(fn)
-        @jwt_required(optional=True)
-        def decorator(*args, **kwargs):
-            current_user = get_jwt_identity()
-            if not current_user:
-                return redirect(url_for('auth_bp.login'))
-            
-            from mik.app.database.crud import get_user_by_username
-            user = get_user_by_username(current_user)
-            
-            if not user or user.role != role:
-                flash('Access denied. Insufficient permissions.', 'danger')
-                return redirect(url_for('main_bp.dashboard'))
-                
-            return fn(*args, **kwargs)
-        return decorator
-    return wrapper
-
-# Main routes
-@main_bp.route('/')
+@bp.route('/')
+@bp.route('/index')
 def index():
-    return redirect(url_for('auth_bp.login'))
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return render_template('index.html')
 
-@main_bp.route('/dashboard')
-@jwt_required(optional=True)
+@bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        if user is None or not user.check_password(password):
+            flash('Invalid username or password')
+            return redirect(url_for('main.login'))
+        
+        login_user(user)
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+        
+        next_page = request.args.get('next')
+        if not next_page:
+            next_page = url_for('main.dashboard')
+        return redirect(next_page)
+    
+    return render_template('login.html')
+
+@bp.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('main.index'))
+
+@bp.route('/dashboard')
+@login_required
 def dashboard():
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-        
-    from mik.app.database.crud import get_devices_count, get_alerts_count
-    devices_count = get_devices_count()
-    alerts_count = get_alerts_count()
-    
-    return render_template('dashboard.html', 
-                          active_page='dashboard',
-                          devices_count=devices_count,
-                          alerts_count=alerts_count)
+    devices = Device.query.filter_by(user_id=current_user.id).all()
+    return render_template('dashboard.html', devices=devices)
 
-@main_bp.route('/devices')
-@jwt_required(optional=True)
+@bp.route('/devices')
+@login_required
 def devices():
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('devices.html', active_page='devices')
+    devices = Device.query.filter_by(user_id=current_user.id).all()
+    return render_template('devices.html', devices=devices)
 
-@main_bp.route('/monitoring')
-@jwt_required(optional=True)
-def monitoring():
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('monitoring.html', active_page='monitoring')
-
-@main_bp.route('/topology')
-@jwt_required(optional=True)
-def topology():
-    """Network topology page"""
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('topology.html', active_page='topology')
-
-@main_bp.route('/vpn')
-@jwt_required(optional=True)
-def vpn_monitoring():
-    """VPN monitoring page"""
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('vpn_monitoring.html', active_page='vpn')
-
-@main_bp.route('/users')
-@jwt_required(optional=True)
-@role_required('admin')
-def users():
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('users.html', active_page='users')
-
-@main_bp.route('/settings')
-@jwt_required(optional=True)
-def settings():
-    current_user = get_jwt_identity()
-    if not current_user:
-        return redirect(url_for('auth_bp.login'))
-    return render_template('settings.html', active_page='settings')
-
-# WebSocket event handlers
-@socketio.on('connect')
-def handle_connect():
-    logger.debug("Client connected")
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    logger.debug("Client disconnected")
-
-@socketio.on('request_update')
-def handle_update_request(data):
-    device_id = data.get('device_id')
-    if device_id:
-        from mik.app.core.mikrotik import get_device_metrics
-        from mik.app.database.crud import get_device_by_id
+@bp.route('/device/add', methods=['GET', 'POST'])
+@login_required
+def add_device():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        ip_address = request.form.get('ip_address')
+        port = request.form.get('port', type=int, default=8728)
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        device = get_device_by_id(device_id)
-        if device:
-            metrics = get_device_metrics(device)
-            socketio.emit('device_update', {'device_id': device_id, 'metrics': metrics})
-
-# Register error handlers
-def register_error_handlers(app):
-    @app.errorhandler(404)
-    def page_not_found(e):
-        return render_template('404.html'), 404
-
-    @app.errorhandler(500)
-    def internal_server_error(e):
-        logger.error(f"Internal server error: {str(e)}")
-        return render_template('500.html'), 500
-
-# Utility function to init routes
-def init_app(app):
-    app.register_blueprint(main_bp)
-    register_error_handlers(app)
+        device = Device(name=name, ip_address=ip_address, port=port,
+                       username=username, password=password, user_id=current_user.id)
+        
+        try:
+            # Thử kết nối đến thiết bị
+            api = get_device_connection(device)
+            if api:
+                # Lấy thông tin hệ thống để xác nhận thiết bị hoạt động
+                system_info = get_system_info(api)
+                if system_info:
+                    device.status = 'online'
+                    device.last_check = datetime.utcnow()
+                    db.session.add(device)
+                    db.session.commit()
+                    flash('Device added successfully')
+                    return redirect(url_for('main.devices'))
+            
+            flash('Could not connect to device')
+            return redirect(url_for('main.add_device'))
+            
+        except Exception as e:
+            flash(f'Error adding device: {str(e)}')
+            return redirect(url_for('main.add_device'))
     
-    # Return the app for testing
-    return app
+    return render_template('device_form.html')
+
+@bp.route('/device/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_device(id):
+    device = Device.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    
+    if request.method == 'POST':
+        device.name = request.form.get('name')
+        device.ip_address = request.form.get('ip_address')
+        device.port = request.form.get('port', type=int, default=8728)
+        device.username = request.form.get('username')
+        if request.form.get('password'):
+            device.password = request.form.get('password')
+        
+        try:
+            db.session.commit()
+            flash('Device updated successfully')
+            return redirect(url_for('main.devices'))
+        except Exception as e:
+            flash(f'Error updating device: {str(e)}')
+            return redirect(url_for('main.edit_device', id=id))
+    
+    return render_template('device_form.html', device=device)
+
+@bp.route('/device/<int:id>/delete')
+@login_required
+def delete_device(id):
+    device = Device.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    
+    try:
+        db.session.delete(device)
+        db.session.commit()
+        flash('Device deleted successfully')
+    except Exception as e:
+        flash(f'Error deleting device: {str(e)}')
+    
+    return redirect(url_for('main.devices'))
+
+@bp.route('/api/devices')
+@login_required
+def api_devices():
+    devices = Device.query.filter_by(user_id=current_user.id).all()
+    return jsonify([device.to_dict() for device in devices])
+
+@bp.route('/api/device/<int:id>')
+@login_required
+def api_device(id):
+    device = Device.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    
+    try:
+        api = get_device_connection(device)
+        if api:
+            system_info = get_system_info(api)
+            interfaces = get_interfaces(api)
+            clients = get_device_clients(api)
+            
+            return jsonify({
+                'device': device.to_dict(),
+                'system_info': system_info,
+                'interfaces': interfaces,
+                'clients': clients
+            })
+        
+        return jsonify({'error': 'Could not connect to device'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
