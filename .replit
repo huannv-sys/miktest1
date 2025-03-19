@@ -1,33 +1,13 @@
-modules = ["python3", "python-3.11"]
+run = "./.replit/workflow/default_run.sh"
+modules = ["python-3.11"]
+
+[env]
+PYTHONPATH = "."
+PYTHONUNBUFFERED = "1"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
 
 [nix]
 channel = "stable-24_05"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "python"
-
-[[workflows.workflow]]
-name = "python"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python create_admin.py"
-
-[deployment]
-run = ["sh", "-c", "python create_admin.py"]

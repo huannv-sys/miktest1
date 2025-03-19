@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.python3
     pkgs.postgresql
     pkgs.rustc
     pkgs.pkg-config

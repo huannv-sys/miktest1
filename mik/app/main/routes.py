@@ -156,3 +156,10 @@ def api_device(id):
         return jsonify({'error': 'Could not connect to device'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@bp.route('/vpn-monitoring')
+@login_required
+def vpn_monitoring():
+    """VPN Monitoring page"""
+    devices = Device.query.filter_by(user_id=current_user.id).all()
+    return render_template('vpn_monitoring.html', devices=devices)
