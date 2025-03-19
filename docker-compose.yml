@@ -35,7 +35,7 @@ services:
       - MIKROTIK_CONNECTION_TIMEOUT=10
       - MIKROTIK_COMMAND_TIMEOUT=15
     ports:
-      - "5000:5000"
+      - "5050:5050"
 
 volumes:
   postgres_data:

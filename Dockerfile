@@ -37,7 +37,7 @@ COPY --chown=mikmon:mikmon ./docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Hiển thị cổng
-EXPOSE 5000
+EXPOSE 5050
 
 # Mặc định sử dụng gunicorn để chạy ứng dụng
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
