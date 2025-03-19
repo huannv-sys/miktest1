@@ -1,5 +1,5 @@
-run = "python run.py"
+run = "python main.py"
 language = "python3"
 onBoot = true
 persistent = true
-name = "app_server"
+name = "flask_app"
