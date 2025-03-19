@@ -1,6 +1,6 @@
 # MikroTik Monitor
 
-Dashboard giám sát và quản lý thiết bị MikroTik toàn diện.
+Dashboard giám sát và quản lý thiết bị MikroTik toàn diện, hỗ trợ cài đặt tự động trên Ubuntu 24.04 và Windows.
 
 ## Tính năng
 
@@ -10,59 +10,98 @@ Dashboard giám sát và quản lý thiết bị MikroTik toàn diện.
 - Hiển thị bản đồ mạng và kết nối giữa các thiết bị
 - Cảnh báo khi phát hiện sự cố hoặc khi thông số vượt ngưỡng
 - Giám sát kết nối VPN
+- Hỗ trợ triển khai linh hoạt (Baremetal, Docker)
 
-## Cài đặt
+## Cài đặt tự động
 
-### Yêu cầu
+Chúng tôi cung cấp các script cài đặt tự động cho các nền tảng phổ biến.
 
-- Python 3.9+
-- PostgreSQL
-- Các gói phụ thuộc trong pyproject.toml
+### Phương thức 1: Script cài đặt tự động
 
-### Cấu hình môi trường
+Sử dụng script cài đặt thông minh sẽ tự động phát hiện hệ điều hành và chọn phương thức cài đặt phù hợp:
 
-Tạo file `.env` với nội dung sau:
-
-```
-SESSION_SECRET=your_secret_key_here
-FLASK_APP=run_server.py
-FLASK_DEBUG=1
-PYTHONPATH=.
-PYTHONUNBUFFERED=1
-DATABASE_URL=postgresql://postgres:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}
+```bash
+./install.sh
 ```
 
-### Cài đặt dependencies
+### Phương thức 2: Script cài đặt trực tiếp
 
-```
-pip install -e .
-```
+#### Ubuntu 24.04
 
-## Khởi động ứng dụng
-
-### Sử dụng Python trực tiếp
-
-```
-python run_server.py
+```bash
+sudo ./install_ubuntu_24.04.sh
 ```
 
-hoặc
+#### Windows (PowerShell với quyền Administrator)
 
-```
-python run.py
-```
-
-### Sử dụng Gunicorn (cho môi trường production)
-
-```
-bash run_gunicorn.sh
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\install_windows.ps1
 ```
 
-## Đăng nhập
+### Phương thức 3: Sử dụng Docker
 
-Tài khoản mặc định:
-- Username: admin
-- Password: admin
+```bash
+docker-compose up -d
+```
+
+### Phương thức 4: Cài đặt thủ công
+
+Xem hướng dẫn chi tiết trong file [INSTALLATION.md](INSTALLATION.md)
+
+## Yêu cầu hệ thống
+
+### Ubuntu 24.04
+- Python 3.11 hoặc cao hơn
+- PostgreSQL 14 hoặc cao hơn
+- Nginx (Tùy chọn nếu muốn reverse proxy)
+
+### Windows
+- Windows 10/11 hoặc Windows Server 2019/2022
+- Python 3.11 hoặc cao hơn
+- PostgreSQL 14 hoặc cao hơn
+
+### Docker
+- Docker Engine 20.10+
+- Docker Compose v2+
+
+## Cấu hình môi trường
+
+Tệp `.env` sẽ được tạo tự động trong quá trình cài đặt. Nếu bạn cài đặt thủ công, hãy tạo file `.env` với nội dung mẫu sau:
+
+```
+# Flask Configuration
+FLASK_APP=main.py
+FLASK_ENV=production
+FLASK_DEBUG=0
+
+# Security Keys
+SECRET_KEY=your_random_secret_key
+JWT_SECRET_KEY=your_random_jwt_key
+WTF_CSRF_SECRET_KEY=your_random_csrf_key
+
+# JWT Configuration
+JWT_ACCESS_TOKEN_EXPIRES_MINUTES=60
+JWT_REFRESH_TOKEN_EXPIRES_DAYS=30
+JWT_COOKIE_SECURE=1
+JWT_COOKIE_CSRF_PROTECT=1
+
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+
+# MikroTik Connection Settings
+MIKROTIK_CONNECTION_TIMEOUT=10
+MIKROTIK_COMMAND_TIMEOUT=15
+```
+
+## Thông tin đăng nhập mặc định
+
+Sau khi cài đặt, bạn có thể đăng nhập với thông tin mặc định:
+
+- Username: `admin`
+- Password: `admin123`
+
+**Lưu ý quan trọng**: Vui lòng thay đổi mật khẩu mặc định ngay sau khi đăng nhập lần đầu tiên.
 
 ## Cấu trúc dự án
 
@@ -80,6 +119,63 @@ mikrotik-monitor/
 │   ├── index.html      # Trang chủ
 │   ├── login.html      # Trang đăng nhập
 │   └── dashboard.html  # Dashboard chính
+├── dependencies.txt    # Danh sách gói phụ thuộc
+├── Dockerfile          # File cấu hình Docker
+├── docker-compose.yml  # Cấu hình Docker Compose
+├── install.sh          # Script cài đặt thông minh
+├── install_ubuntu_24.04.sh # Script cài đặt cho Ubuntu 24.04
+├── install_windows.ps1 # Script cài đặt cho Windows
+├── INSTALLATION.md     # Hướng dẫn cài đặt chi tiết
 ├── run_server.py       # Entry point chính
 └── run.py              # Entry point thay thế
+```
+
+## Quản lý dịch vụ sau khi cài đặt
+
+### Ubuntu 24.04
+```bash
+# Khởi động dịch vụ
+sudo systemctl start mikrotik-monitor
+
+# Dừng dịch vụ
+sudo systemctl stop mikrotik-monitor
+
+# Khởi động lại dịch vụ
+sudo systemctl restart mikrotik-monitor
+
+# Kiểm tra trạng thái
+sudo systemctl status mikrotik-monitor
+
+# Xem logs
+sudo journalctl -u mikrotik-monitor
+```
+
+### Windows
+```powershell
+# Khởi động dịch vụ
+Start-Service MikroTikMonitor
+
+# Dừng dịch vụ
+Stop-Service MikroTikMonitor
+
+# Khởi động lại dịch vụ
+Restart-Service MikroTikMonitor
+
+# Kiểm tra trạng thái
+Get-Service MikroTikMonitor
+```
+
+### Docker
+```bash
+# Khởi động
+docker-compose up -d
+
+# Dừng và xóa container
+docker-compose down
+
+# Xem logs
+docker-compose logs -f
+
+# Khởi động lại
+docker-compose restart
 ```
