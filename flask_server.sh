@@ -1,2 +1,2 @@
 #!/bin/bash
-python run.py
+python simple_flask_server.py

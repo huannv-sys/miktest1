@@ -1,43 +1,31 @@
-import os
-import logging
-from datetime import datetime
-
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+import os
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Define base class for SQLAlchemy models
+# Create a base class for SQLAlchemy models
 class Base(DeclarativeBase):
     pass
 
-# Initialize extensions
-db = SQLAlchemy(model_class=Base)
-login_manager = LoginManager()
-
-# Create the Flask application
+# Initialize Flask app
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///mikrotik_monitor.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure application
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-app.secret_key = os.environ.get("SESSION_SECRET", "dev_key_only_for_development")
-
-# Initialize extensions with app
+# Initialize SQLAlchemy with the app
+db = SQLAlchemy(model_class=Base)
 db.init_app(app)
+
+# Initialize Login Manager
+login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Define models
+# User model
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     
@@ -62,27 +50,73 @@ class User(UserMixin, db.Model):
             'email': self.email,
             'role': self.role,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_login': self.last_login.isoformat() if self.last_login else None
+            'last_login': self.last_login.isoformat() if self.last_login else None,
         }
 
+# User loader for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# Define routes
+# Routes
 @app.route('/')
 def index():
-    return "MikroTik Monitor - Server is running!"
+    return render_template('index.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route('/devices')
+@login_required
+def devices():
+    return render_template('devices.html')
+
+@app.route('/vpn-monitoring')
+@login_required
+def vpn_monitoring():
+    return render_template('vpn_monitoring.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Tên đăng nhập hoặc mật khẩu không đúng', 'danger')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Bạn đã đăng xuất thành công', 'success')
+    return redirect(url_for('index'))
 
 @app.route('/status')
 def status():
     return jsonify({
-        "status": "running",
-        "time": datetime.utcnow().isoformat(),
-        "app_name": "MikroTik Monitor"
+        'status': 'ok',
+        'message': 'MikroTik Monitor API is running'
     })
 
-# Create tables
+# Create database tables if they don't exist
 with app.app_context():
     db.create_all()
 

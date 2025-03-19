@@ -1,5 +1,3 @@
-run = "bash flask_server.sh"
+run = "python simple_flask_server.py"
 language = "python3"
-onBoot = true
-persistent = true
-hidden = false
+onBoot = false

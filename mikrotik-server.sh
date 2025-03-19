@@ -1,2 +1,2 @@
 #!/bin/bash
-PYTHONPATH="." python3 run.py
+python simple_flask_server.py
